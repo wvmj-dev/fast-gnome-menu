@@ -319,6 +319,96 @@ class CustomActionsGroup extends Adw.PreferencesGroup {
     }
 });
 
+const EDITOR_SIZE = 7;
+
+// Expander with a clickable grid where each pressed cell is a button
+// position of the custom layout.
+const LayoutEditorRow = GObject.registerClass(
+class LayoutEditorRow extends Adw.ExpanderRow {
+    _init(settings) {
+        super._init({
+            title: _('Custom layout'),
+            subtitle: _('Click the cells where buttons go; they fill in reading order'),
+        });
+        this._settings = settings;
+        this._guard = {busy: false};
+
+        const grid = new Gtk.Grid({
+            row_spacing: 4,
+            column_spacing: 4,
+            halign: Gtk.Align.CENTER,
+            margin_top: 12,
+        });
+        this._cells = [];
+        for (let y = 0; y < EDITOR_SIZE; y++) {
+            this._cells.push([]);
+            for (let x = 0; x < EDITOR_SIZE; x++) {
+                const cell = new Gtk.ToggleButton({width_request: 32, height_request: 32});
+                cell.update_property([Gtk.AccessibleProperty.LABEL],
+                    [_('Row %d, column %d').format(y + 1, x + 1)]);
+                cell.connect('toggled', () => {
+                    cell[cell.active ? 'add_css_class' : 'remove_css_class']('suggested-action');
+                    if (!this._guard.busy)
+                        this._save();
+                });
+                grid.attach(cell, x, y, 1, 1);
+                this._cells[y].push(cell);
+            }
+        }
+
+        this._count = new Gtk.Label({css_classes: ['dim-label', 'caption']});
+        const clear = new Gtk.Button({
+            label: _('Clear'),
+            css_classes: ['flat'],
+            halign: Gtk.Align.CENTER,
+        });
+        clear.connect('clicked', () => {
+            guarded(this._guard, () => this._cells.flat().forEach(cell => (cell.active = false)));
+            this._save();
+        });
+
+        const box = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            spacing: 8,
+            margin_bottom: 12,
+        });
+        box.append(grid);
+        box.append(this._count);
+        box.append(clear);
+        this.add_row(box);
+
+        watch(settings, ['custom-layout'], this._guard, () => this._load());
+        settings.connect('changed::actions', () => this._updateCount());
+        this._load();
+    }
+
+    _load() {
+        const rows = this._settings.get_strv('custom-layout');
+        guarded(this._guard, () => this._cells.forEach((row, y) => row.forEach((cell, x) => {
+            const char = rows[y]?.[x];
+            cell.active = char === 'x' || char === 'X';
+        })));
+        this._updateCount();
+    }
+
+    // Stored compactly: trailing empty cells and rows are dropped.
+    _save() {
+        const rows = this._cells.map(row =>
+            row.map(cell => (cell.active ? 'x' : '.')).join('').replace(/\.+$/, ''));
+        while (rows.length > 0 && rows[rows.length - 1] === '')
+            rows.pop();
+        guarded(this._guard, () => this._settings.set_strv('custom-layout', rows));
+        this._updateCount();
+    }
+
+    _updateCount() {
+        const positions = this._cells.flat().filter(cell => cell.active).length;
+        const actions = this._settings.get_strv('actions').length;
+        this._count.label = _('%d positions, %d actions').format(positions, actions) +
+            (positions < actions ? ` · ${_('the rest go below')}` : '');
+    }
+});
+
 const ShortcutRow = GObject.registerClass(
 class ShortcutRow extends Adw.ActionRow {
     _init(settings, key) {
@@ -447,16 +537,49 @@ export default class FastGnomeMenuPreferences extends ExtensionPreferences {
         });
         window.add(appearancePage);
 
-        const buttonsGroup = new Adw.PreferencesGroup({title: _('Buttons')});
-        appearancePage.add(buttonsGroup);
-        choice(buttonsGroup, 'layout', _('Layout'),
-            [['auto', _('Automatic')], ['grid', _('Grid')]]);
-        const columnsRow = spin(buttonsGroup, 'columns', _('Buttons per row'), 1, 6, 1);
+        const layoutGroup = new Adw.PreferencesGroup({title: _('Layout and position')});
+        appearancePage.add(layoutGroup);
+        choice(layoutGroup, 'layout', _('Layout'), [
+            ['auto', _('Automatic')],
+            ['grid', _('Grid')],
+            ['row', _('Row')],
+            ['column', _('Column')],
+            ['circle', _('Circle')],
+            ['circle-center', _('Circle with center')],
+            ['custom', _('Custom')],
+        ]);
+        const columnsRow = spin(layoutGroup, 'columns', _('Buttons per row'), 1, 6, 1);
+        const editorRow = new LayoutEditorRow(settings);
+        layoutGroup.add(editorRow);
         const syncLayout = () => {
-            columnsRow.sensitive = settings.get_string('layout') === 'grid';
+            const layout = settings.get_string('layout');
+            columnsRow.visible = layout === 'grid';
+            editorRow.visible = layout === 'custom';
+            editorRow.expanded = layout === 'custom';
         };
         settings.connect('changed::layout', syncLayout);
         syncLayout();
+
+        choice(layoutGroup, 'position', _('Position'), [
+            ['center', _('Center')],
+            ['top', _('Top')],
+            ['bottom', _('Bottom')],
+            ['left', _('Left')],
+            ['right', _('Right')],
+            ['top-left', _('Top left')],
+            ['top-right', _('Top right')],
+            ['bottom-left', _('Bottom left')],
+            ['bottom-right', _('Bottom right')],
+        ]);
+        const marginRow = spin(layoutGroup, 'position-margin', _('Distance from the edge (px)'), 0, 400, 8);
+        const syncPosition = () => {
+            marginRow.sensitive = settings.get_string('position') !== 'center';
+        };
+        settings.connect('changed::position', syncPosition);
+        syncPosition();
+
+        const buttonsGroup = new Adw.PreferencesGroup({title: _('Buttons')});
+        appearancePage.add(buttonsGroup);
         spin(buttonsGroup, 'button-size', _('Button size (px)'), 64, 256, 8);
         spin(buttonsGroup, 'corner-radius', _('Corner radius (px)'), 0, 64, 2);
         spin(buttonsGroup, 'spacing', _('Space between buttons (px)'), 0, 64, 2);
@@ -466,8 +589,6 @@ export default class FastGnomeMenuPreferences extends ExtensionPreferences {
             _('100 turns the growth animation off'));
         toggle(buttonsGroup, 'show-labels', _('Show labels'));
 
-        const colorsGroup = new Adw.PreferencesGroup({title: _('Colors and background')});
-        appearancePage.add(colorsGroup);
 
         const colorRow = new Adw.ActionRow({
             title: _('Custom highlight color'),
@@ -481,7 +602,7 @@ export default class FastGnomeMenuPreferences extends ExtensionPreferences {
         colorRow.add_suffix(colorButton);
         colorRow.add_suffix(colorSwitch);
         colorRow.activatable_widget = colorSwitch;
-        colorsGroup.add(colorRow);
+        buttonsGroup.add(colorRow);
 
         const colorGuard = {busy: false};
         const syncColor = () => guarded(colorGuard, () => {
@@ -507,9 +628,16 @@ export default class FastGnomeMenuPreferences extends ExtensionPreferences {
         colorSwitch.connect('notify::active', saveColor);
         colorButton.connect('notify::rgba', saveColor);
 
-        toggle(colorsGroup, 'show-panel', _('Show panel background'),
-            _('When off, the buttons float over the dimmed screen'));
-        spin(colorsGroup, 'backdrop-opacity', _('Background dimming (%)'), 0, 100, 5);
+        const backgroundGroup = new Adw.PreferencesGroup({title: _('Background')});
+        appearancePage.add(backgroundGroup);
+        choice(backgroundGroup, 'panel-style', _('Panel'), [
+            ['solid', _('Solid')],
+            ['translucent', _('Translucent')],
+            ['none', _('None (buttons float)')],
+        ]);
+        spin(backgroundGroup, 'backdrop-opacity', _('Screen dimming (%)'), 0, 100, 5);
+        spin(backgroundGroup, 'backdrop-blur', _('Screen blur'), 0, 60, 2,
+            _('0 turns it off; higher values cost more GPU while the menu is open'));
 
         // Behavior
         const behaviorPage = new Adw.PreferencesPage({

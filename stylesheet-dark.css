@@ -5,6 +5,11 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
+/* panel-style 'translucent'; with backdrop-blur it looks like frosted glass */
+.fgm-menu.translucent {
+  background-color: rgba(46, 46, 50, 0.6);
+}
+
 .fgm-dim {
   background-color: rgba(0, 0, 0, 0.45);
 }

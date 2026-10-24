@@ -13,6 +13,8 @@ import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.j
 import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import {CUSTOM_ICON, CUSTOM_PREFIX, getActions} from './actions.js';
+import {contrastColor, parseColor} from './color.js';
+import {ROUND_LAYOUTS, getCells, pickNeighbour} from './layout.js';
 
 const ANIMATION_TIME = 150;
 const FOCUS_TIME = 200;
@@ -26,55 +28,19 @@ const AVAILABILITY = {
     'power-off': 'canPowerOff',
 };
 
-/**
- * @param {string} value color from the settings
- * @returns {?string} the color as #rrggbb, or null if it is not one. Only
- *   this exact form ever reaches an inline style.
- */
-function parseColor(value) {
-    return /^#[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : null;
-}
-
-/**
- * @param {string} hex color as #rrggbb
- * @returns {string} black or white, whichever reads better on the color
- */
-function contrastColor(hex) {
-    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
-    return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? '#000000' : '#ffffff';
-}
-
-/**
- * Grid cell [column, row] of each button. Columns may be fractional, so a
- * shorter last row is centred.
- *
- * @param {number} n number of buttons
- * @param {number|null} columns fixed number of columns, or null for automatic:
- *   1-3 in a row, 4 as 2x2, 5 like a die face, 6 as 2x3, more in a near-square
- * @returns {number[][]}
- */
-function getCells(n, columns) {
-    if (columns === null && n === 5)
-        return [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]];
-
-    if (columns === null) {
-        if (n <= 3)
-            columns = n;
-        else if (n === 4)
-            columns = 2;
-        else
-            columns = Math.ceil(Math.sqrt(n * 1.5));
-    }
-    columns = Math.min(columns, n);
-
-    const cells = [];
-    for (let i = 0; i < n; i++) {
-        const row = Math.floor(i / columns);
-        const inRow = Math.min(columns, n - row * columns);
-        cells.push([i % columns + (columns - inRow) / 2, row]);
-    }
-    return cells;
-}
+// Alignment [x, y] of the menu for each value of the position key.
+const {START, CENTER, END} = Clutter.ActorAlign;
+const POSITIONS = {
+    'center': [CENTER, CENTER],
+    'top': [CENTER, START],
+    'bottom': [CENTER, END],
+    'left': [START, CENTER],
+    'right': [END, CENTER],
+    'top-left': [START, START],
+    'top-right': [END, START],
+    'bottom-left': [START, END],
+    'bottom-right': [END, END],
+};
 
 const PowerMenu = GObject.registerClass({
     Signals: {'action-activated': {param_types: [GObject.TYPE_STRING]}},
@@ -90,6 +56,15 @@ const PowerMenu = GObject.registerClass({
             coordinate: Clutter.BindCoordinate.ALL,
         }));
         this.set_style(`background-color: rgba(0, 0, 0, ${settings.get_int('backdrop-opacity') / 100});`);
+        // Blurs whatever is behind the menu; the children stay sharp.
+        const blur = settings.get_int('backdrop-blur');
+        if (blur > 0) {
+            this.add_effect(new Shell.BlurEffect({
+                mode: Shell.BlurMode.BACKGROUND,
+                radius: blur,
+                brightness: 1,
+            }));
+        }
         this._cancellable = new Gio.Cancellable();
         this.connect('destroy', () => {
             this._stopCountdown();
@@ -111,7 +86,9 @@ const PowerMenu = GObject.registerClass({
         this._highlight = highlight;
         this._highlightStyle = highlight
             ? `background-color: ${highlight}; color: ${contrastColor(highlight)};` : '';
-        this._showPanel = settings.get_boolean('show-panel');
+        this._panelStyle = settings.get_string('panel-style');
+        this._position = POSITIONS[settings.get_string('position')] ?? POSITIONS.center;
+        this._positionMargin = settings.get_int('position-margin');
         this._closeOnClickOutside = settings.get_boolean('close-on-click-outside');
         this._confirmDefault = settings.get_string('confirm-default');
         this._initialId = settings.get_string('initial-focus') === 'last'
@@ -130,21 +107,23 @@ const PowerMenu = GObject.registerClass({
         }));
         this.add_child(this._dim);
 
+        // The work area leaves out the top bar, so a menu at the top edge
+        // is not hidden behind it.
         const monitor = settings.get_string('monitor') === 'primary'
             ? Main.layoutManager.primaryMonitor : Main.layoutManager.currentMonitor;
+        const area = Main.layoutManager.getWorkAreaForMonitor(monitor.index);
+        this._area = area;
         this._monitorBox = new St.Widget({layout_manager: new Clutter.BinLayout()});
-        this._monitorBox.set_position(monitor.x, monitor.y);
-        this._monitorBox.set_size(monitor.width, monitor.height);
+        this._monitorBox.set_position(area.x, area.y);
+        this._monitorBox.set_size(area.width, area.height);
         this.add_child(this._monitorBox);
 
         this._menu = new St.Widget({
             style_class: 'fgm-menu',
             reactive: true,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-            x_expand: true,
-            y_expand: true,
         });
+        this._applyPanel(this._menu, false);
+        this._applyPosition(this._menu);
         this._monitorBox.add_child(this._menu);
 
         const catalog = getActions(_, settings.get_value('custom-actions').deepUnpack());
@@ -154,6 +133,14 @@ const PowerMenu = GObject.registerClass({
         this._ids = ids;
         this._buttons = [];
         this._shortcuts = new Map();
+
+        const layout = settings.get_string('layout');
+        const round = ROUND_LAYOUTS.includes(layout);
+        const cells = getCells(Math.max(ids.length, 1), layout,
+            settings.get_int('columns'), settings.get_strv('custom-layout'));
+        const {scaleFactor} = St.ThemeContext.get_for_stage(global.stage);
+        if (ids.length > 0)
+            this._fitMetrics(cells, round, scaleFactor);
 
         ids.forEach((id, i) => {
             const action = catalog.get(id);
@@ -176,36 +163,105 @@ const PowerMenu = GObject.registerClass({
         });
 
         if (this._buttons.length === 0) {
-            this._menu.set_style(`padding: ${spacing}px; border-radius: ${radius + spacing}px;`);
+            this._addStyle(this._menu, `padding: ${Math.max(spacing, 16)}px; border-radius: ${radius + spacing}px;`);
             this._menu.layout_manager = new Clutter.BinLayout();
             this._menu.add_child(new St.Label({
                 style_class: 'fgm-empty',
                 text: _('No actions enabled. Choose some in the extension preferences.'),
             }));
         } else {
-            const columns = settings.get_string('layout') === 'grid'
-                ? settings.get_int('columns') : null;
-            this._placeButtons(getCells(this._buttons.length, columns), size, spacing, radius);
+            this._placeButtons(cells, round, scaleFactor);
         }
     }
 
-    _placeButtons(cells, size, spacing, radius) {
+    // Panel size and the position of cell [0, 0], for the given metrics.
+    // Square panels fit the buttons' bounding box; round ones are a circle
+    // that reaches the farthest button corner.
+    _measure(cells, round, size, radius, spacing) {
         const step = size + spacing;
-        const width = Math.max(...cells.map(([col]) => col)) * step + size + 2 * spacing;
-        const height = Math.max(...cells.map(([, row]) => row)) * step + size + 2 * spacing;
+        const maxX = Math.max(...cells.map(([x]) => x));
+        const maxY = Math.max(...cells.map(([, y]) => y));
+        if (!round) {
+            return {
+                width: maxX * step + size + 2 * spacing,
+                height: maxY * step + size + 2 * spacing,
+                originX: spacing,
+                originY: spacing,
+                panelRadius: radius + spacing,
+            };
+        }
+        const [cx, cy] = [maxX / 2, maxY / 2];
+        const corner = (size / 2 - radius) * Math.SQRT2 + radius;
+        const farthest = Math.max(...cells.map(([x, y]) => Math.hypot(x - cx, y - cy)));
+        const half = Math.ceil(farthest * step + corner + spacing);
+        return {
+            width: 2 * half,
+            height: 2 * half,
+            originX: half - cx * step - size / 2,
+            originY: half - cy * step - size / 2,
+            panelRadius: half,
+        };
+    }
+
+    // Too big for the work area (large buttons, small or scaled monitor):
+    // shrink the metrics before the buttons are built, so everything is
+    // drawn at the size that fits instead of running off the screen.
+    _fitMetrics(cells, round, scaleFactor) {
+        const {size, radius, spacing} = this._metrics;
+        const {width, height} = this._measure(cells, round, size, radius, spacing);
+        const room = 2 * this._positionMargin;
+        const fit = Math.min(1,
+            (this._area.width / scaleFactor - room) / width,
+            (this._area.height / scaleFactor - room) / height);
+        if (fit < 1) {
+            this._metrics.size = Math.floor(size * fit);
+            this._metrics.radius = Math.floor(radius * fit);
+            this._metrics.spacing = Math.floor(spacing * fit);
+        }
+    }
+
+    // St scales CSS lengths by the UI scale factor but not sizes and positions
+    // set from code, so the geometry here is scaled by hand (CSS stays in
+    // logical pixels).
+    _placeButtons(cells, round, scaleFactor) {
+        const [size, radius, spacing] = [this._metrics.size, this._metrics.radius, this._metrics.spacing]
+            .map(value => value * scaleFactor);
+        const {width, height, originX, originY, panelRadius} =
+            this._measure(cells, round, size, radius, spacing);
 
         this._menu.set_size(Math.round(width), Math.round(height));
-        const panel = this._showPanel ? '' : 'background-color: transparent; border-width: 0; box-shadow: none;';
-        this._menu.set_style(`border-radius: ${radius + spacing}px; ${panel}`);
+        this._addStyle(this._menu, `border-radius: ${Math.round(panelRadius / scaleFactor)}px;`);
 
         this._centers = this._buttons.map((button, i) => {
             const [col, row] = cells[i];
-            const x = spacing + col * step;
-            const y = spacing + row * step;
+            const x = originX + col * (size + spacing);
+            const y = originY + row * (size + spacing);
             button.set_position(Math.round(x), Math.round(y));
             this._menu.add_child(button);
             return [x + size / 2, y + size / 2];
         });
+    }
+
+    // The confirmation always gets a background, even when the menu has none.
+    _applyPanel(actor, isConfirmation) {
+        if (this._panelStyle === 'translucent')
+            actor.add_style_class_name('translucent');
+        else if (this._panelStyle === 'none' && !isConfirmation)
+            this._addStyle(actor, 'background-color: transparent; border-width: 0; box-shadow: none;');
+    }
+
+    // The margin goes through CSS: St resets the actor margins to the
+    // style's values whenever the style is recomputed.
+    _applyPosition(actor) {
+        const [xAlign, yAlign] = this._position;
+        const margin = edge => `${edge ? this._positionMargin : 0}px`;
+        actor.set({x_align: xAlign, y_align: yAlign, x_expand: true, y_expand: true});
+        this._addStyle(actor, `margin: ${margin(yAlign === START)} ${margin(xAlign === END)} ` +
+            `${margin(yAlign === END)} ${margin(xAlign === START)};`);
+    }
+
+    _addStyle(actor, style) {
+        actor.set_style(`${actor.get_style() ?? ''} ${style}`);
     }
 
     // SystemActions has no hibernate, so ask logind; the button stays
@@ -314,15 +370,13 @@ const PowerMenu = GObject.registerClass({
             style_class: 'fgm-menu fgm-confirm',
             orientation: Clutter.Orientation.VERTICAL,
             reactive: true,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-            x_expand: true,
-            y_expand: true,
             opacity: 0,
         });
+        this._applyPanel(box, true);
+        this._applyPosition(box);
         // Spacing can be 0 in the menu; the confirmation always needs room.
         const pad = Math.max(2 * spacing, 16);
-        box.set_style(`padding: ${pad}px; spacing: ${pad / 2}px; border-radius: ${radius + pad}px;`);
+        this._addStyle(box, `padding: ${pad}px; spacing: ${pad / 2}px; border-radius: ${radius + pad}px;`);
 
         // The selected action, same shape as in the menu, a bit larger.
         // Not an fgm-button: a non-reactive St widget is :insensitive and
@@ -521,58 +575,13 @@ const PowerMenu = GObject.registerClass({
         this._buttons[i].grab_key_focus();
     }
 
-    // Picks the closest button in the pressed direction. The square root of
-    // the cosine keeps straight neighbours first in a grid but lets a
-    // diagonal one that is much closer win (the middle of the 5-button
-    // layout). Ties go to the button on the side we came from, so in that
-    // layout top-left -> middle -> right lands on top-right.
     _moveSpatial(dx, dy) {
         const i = Math.max(this._focusedIndex(), 0);
-        const [x, y] = this._centers[i];
-        const previous = this._previousCenter;
-        const across = ([cx, cy]) => (dx !== 0 ? cy : cx);
-        let best = -1;
-        let bestScore = Infinity;
-
-        this._centers.forEach((center, j) => {
-            if (j === i || !this._buttons[j].reactive)
-                return;
-            const [cx, cy] = center;
-            const dist = Math.hypot(cx - x, cy - y);
-            const cos = ((cx - x) * dx + (cy - y) * dy) / dist;
-            if (cos < 0.3)
-                return;
-            const score = dist / Math.sqrt(cos);
-            const tie = best >= 0 && Math.abs(score - bestScore) < 1;
-            if (tie && previous) {
-                const target = across(previous);
-                if (Math.abs(across(center) - target) >= Math.abs(across(this._centers[best]) - target))
-                    return;
-            } else if (score >= bestScore) {
-                return;
-            }
-            bestScore = score;
-            best = j;
-        });
-
-        // Nothing ahead: wrap to the far end of the same row or column.
-        if (best < 0) {
-            let farthest = 0;
-            this._centers.forEach(([cx, cy], j) => {
-                if (j === i || !this._buttons[j].reactive)
-                    return;
-                const dist = Math.hypot(cx - x, cy - y);
-                const cos = ((cx - x) * dx + (cy - y) * dy) / dist;
-                if (cos < -0.9 && dist > farthest) {
-                    farthest = dist;
-                    best = j;
-                }
-            });
-        }
-
+        const reactive = this._buttons.map(button => button.reactive);
+        const next = pickNeighbour(this._centers, reactive, i, dx, dy, this._previousCenter);
         this._previousCenter = this._centers[i];
-        if (best >= 0)
-            this._buttons[best].grab_key_focus();
+        if (next >= 0)
+            this._buttons[next].grab_key_focus();
         else
             this._step(dx + dy > 0 ? 1 : -1);
     }

@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# Build, install or pack the extension.
-#   ./build.sh          compile schemas and translations in place
-#   ./build.sh install  build and install to ~/.local/share/gnome-shell/extensions
-#   ./build.sh pack     build a zip ready for extensions.gnome.org
-#   ./build.sh pot      regenerate po/fast-gnome-menu.pot
-#   ./build.sh dev      install and run a nested GNOME Shell to test without logging out
-#   ./build.sh prefs    install and reopen the preferences window with the new prefs.js
-#   ./build.sh test     install and run tests/smoke.sh in a headless shell (screenshots in tests/output)
+# Build, install, test or pack the extension.
+#   ./build.sh            compile schemas and translations in place
+#   ./build.sh install    build and install to ~/.local/share/gnome-shell/extensions
+#   ./build.sh stage DIR  build and copy the extension to DIR/<uuid> (used by the tests)
+#   ./build.sh test       install and run tests/smoke.sh in a headless shell (screenshots in tests/output)
+#   ./build.sh dev        install and run a nested GNOME Shell to test without logging out
+#   ./build.sh prefs      install and reopen the preferences window with the new prefs.js
+#   ./build.sh pack       build a zip ready for extensions.gnome.org
+#   ./build.sh pot        regenerate po/fast-gnome-menu.pot
 set -euo pipefail
 cd "$(dirname "$0")"
 
 UUID=$(sed -n 's/.*"uuid": *"\([^"]*\)".*/\1/p' metadata.json)
 DOMAIN=fast-gnome-menu
-SOURCES=(extension.js prefs.js actions.js)
+# Every JavaScript file the extension needs at run time.
+SOURCES=(extension.js prefs.js actions.js layout.js color.js)
 # Shortcut inside ./build.sh dev; the host shell keeps the real one.
 DEV_SHORTCUT='<Super><Alt>x'
 
@@ -25,12 +27,16 @@ build() {
     done
 }
 
-install() {
+stage() {
     build
-    dest="$HOME/.local/share/gnome-shell/extensions/$UUID"
+    dest="$1/$UUID"
     rm -rf "$dest"
     mkdir -p "$dest"
     cp -r metadata.json "${SOURCES[@]}" stylesheet*.css schemas locale "$dest"
+}
+
+install() {
+    stage "$HOME/.local/share/gnome-shell/extensions"
     echo "Installed to $dest"
 }
 
@@ -83,6 +89,10 @@ dev)
         echo "  dbus-run-session -- gnome-shell $mode" >&2
     fi
     ;;
+stage)
+    [ -n "${2:-}" ] || { echo "usage: $0 stage DIR" >&2; exit 1; }
+    stage "$2"
+    ;;
 test)
     install
     tests/smoke.sh "${2:-tests/output}"
@@ -95,14 +105,16 @@ prefs)
     ;;
 pack)
     build
-    gnome-extensions pack --force --podir=po \
-        --extra-source=actions.js \
-        --extra-source=stylesheet-dark.css --extra-source=stylesheet-light.css .
+    extra=()
+    for file in "${SOURCES[@]}" stylesheet-dark.css stylesheet-light.css; do
+        case $file in extension.js | prefs.js) ;; *) extra+=("--extra-source=$file") ;; esac
+    done
+    gnome-extensions pack --force --podir=po "${extra[@]}" .
     ;;
 pot)
     xgettext --from-code=UTF-8 --language=JavaScript --keyword=_ \
         --package-name="$UUID" -o "po/$DOMAIN.pot" "${SOURCES[@]}"
     for po in po/*.po; do msgmerge -U --backup=none "$po" "po/$DOMAIN.pot"; done
     ;;
-*) echo "usage: $0 [build|install|dev|prefs|test|pack|pot]" >&2; exit 1 ;;
+*) echo "usage: $0 [build|install|stage|test|dev|prefs|pack|pot]" >&2; exit 1 ;;
 esac

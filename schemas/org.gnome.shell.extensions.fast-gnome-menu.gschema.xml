@@ -20,10 +20,20 @@
       <choices>
         <choice value="auto"/>
         <choice value="grid"/>
+        <choice value="row"/>
+        <choice value="column"/>
+        <choice value="circle"/>
+        <choice value="circle-center"/>
+        <choice value="custom"/>
       </choices>
       <default>'auto'</default>
       <summary>How the buttons are arranged</summary>
-      <description>"auto" picks the arrangement from the number of buttons (1-3 in a row, 4 as 2x2, 5 like a die face, 6 as 2x3); "grid" uses a fixed number of columns.</description>
+      <description>"auto" picks the arrangement from the number of buttons (1-3 in a row, 4 as 2x2, 5 like a die face, 6 as 2x3); "grid" uses a fixed number of columns; "row" and "column" put all buttons in one line; "circle" places them on a ring; "circle-center" puts the first one in the middle of the ring; "custom" follows custom-layout.</description>
+    </key>
+    <key name="custom-layout" type="as">
+      <default>['x.x', '.x.', 'x.x']</default>
+      <summary>Drawing of the custom layout</summary>
+      <description>One string per row; each "x" is a button position, filled in reading order. Actions that do not fit continue in rows below.</description>
     </key>
     <key name="columns" type="i">
       <range min="1" max="6"/>
@@ -59,9 +69,19 @@
       <default>''</default>
       <summary>Highlight color as #rrggbb; empty uses the system accent color</summary>
     </key>
-    <key name="show-panel" type="b">
-      <default>true</default>
-      <summary>Draw the panel behind the buttons</summary>
+    <key name="panel-style" type="s">
+      <choices>
+        <choice value="solid"/>
+        <choice value="translucent"/>
+        <choice value="none"/>
+      </choices>
+      <default>'solid'</default>
+      <summary>Background of the panel behind the buttons</summary>
+    </key>
+    <key name="backdrop-blur" type="i">
+      <range min="0" max="60"/>
+      <default>0</default>
+      <summary>Blur radius of the screen behind the menu (0 turns it off)</summary>
     </key>
     <key name="show-labels" type="b">
       <default>true</default>
@@ -71,6 +91,26 @@
       <range min="0" max="100"/>
       <default>50</default>
       <summary>Opacity of the background dimming (percent)</summary>
+    </key>
+    <key name="position" type="s">
+      <choices>
+        <choice value="center"/>
+        <choice value="top"/>
+        <choice value="bottom"/>
+        <choice value="left"/>
+        <choice value="right"/>
+        <choice value="top-left"/>
+        <choice value="top-right"/>
+        <choice value="bottom-left"/>
+        <choice value="bottom-right"/>
+      </choices>
+      <default>'center'</default>
+      <summary>Where the menu appears on the monitor</summary>
+    </key>
+    <key name="position-margin" type="i">
+      <range min="0" max="400"/>
+      <default>32</default>
+      <summary>Distance from the screen edge in pixels when the menu is not centered</summary>
     </key>
     <key name="monitor" type="s">
       <choices>
