@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: fast-gnome-menu@wvmj-dev.github.io\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-24 12:35-0300\n"
+"POT-Creation-Date: 2026-10-24 15:28-0300\n"
 "PO-Revision-Date: 2026-10-24 12:00-0300\n"
 "Last-Translator: Wender13 <77487372+Wender13@users.noreply.github.com>\n"
 "Language-Team: none\n"
@@ -17,179 +17,368 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: extension.js:141
+#: extension.js:183
 msgid "No actions enabled. Choose some in the extension preferences."
 msgstr ""
 "No hay acciones activadas. Elija algunas en las preferencias de la extensión."
 
-#: extension.js:301 prefs.js:128
+#: extension.js:372 prefs.js:216 prefs.js:305 prefs.js:362 prefs.js:550
+#: prefs.js:599
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: extension.js:347
+#: extension.js:419
 #, javascript-format
 msgid "Runs automatically in %d second"
 msgid_plural "Runs automatically in %d seconds"
 msgstr[0] "Se ejecuta automáticamente en %d segundo"
 msgstr[1] "Se ejecuta automáticamente en %d segundos"
 
-#: extension.js:588
+#: extension.js:661
 msgid "Power Menu"
 msgstr "Menú de energía"
 
-#: prefs.js:15
-msgid "Actions"
-msgstr "Acciones"
+#: extension.js:802
+#, javascript-format
+msgid "Could not run “%s”"
+msgstr "No se pudo ejecutar «%s»"
 
-#: prefs.js:16
+#: prefs.js:58
+msgid "Order and visibility"
+msgstr "Orden y visibilidad"
+
+#: prefs.js:59
 msgid "Choose which buttons appear and in which order."
 msgstr "Elija qué botones aparecen y en qué orden."
 
-#: prefs.js:44
+#: prefs.js:99
 #, javascript-format
 msgid "Shortcut key: %s"
 msgstr "Tecla de atajo: %s"
 
-#: prefs.js:53
+#: prefs.js:110
 msgid "Move up"
 msgstr "Subir"
 
-#: prefs.js:62
+#: prefs.js:119
 msgid "Move down"
 msgstr "Bajar"
 
-#: prefs.js:92
+#: prefs.js:149
+msgid "Custom actions"
+msgstr "Acciones personalizadas"
+
+#: prefs.js:150
+msgid ""
+"Run your own commands from the menu. Commands run directly, without a shell: "
+"use sh -c \"…\" for pipes or variables."
+msgstr ""
+"Ejecute sus propios comandos desde el menú. Los comandos se ejecutan "
+"directamente, sin shell: use sh -c \"…\" para tuberías o variables."
+
+#: prefs.js:159
+msgid "Add custom action"
+msgstr "Añadir acción personalizada"
+
+#: prefs.js:174
+msgid "No custom actions yet"
+msgstr "Todavía no hay acciones personalizadas"
+
+#: prefs.js:192
+msgid "Edit"
+msgstr "Editar"
+
+#: prefs.js:199 prefs.js:306
+msgid "Delete"
+msgstr "Eliminar"
+
+#: prefs.js:212
+msgid "Edit Custom Action"
+msgstr "Editar acción personalizada"
+
+#: prefs.js:212
+msgid "New Custom Action"
+msgstr "Nueva acción personalizada"
+
+#: prefs.js:217
+msgid "Save"
+msgstr "Guardar"
+
+#: prefs.js:220
+msgid "Name"
+msgstr "Nombre"
+
+#: prefs.js:221
+msgid "Icon name (optional)"
+msgstr "Nombre del icono (opcional)"
+
+#: prefs.js:224
+msgid "Command"
+msgstr "Comando"
+
+#: prefs.js:249
+msgid "Give the action a name."
+msgstr "Dé un nombre a la acción."
+
+#: prefs.js:256
+msgid "Icon not found; the default icon will be used."
+msgstr "Icono no encontrado; se usará el icono predeterminado."
+
+#: prefs.js:266
+#, javascript-format
+msgid "“%s” was not found in PATH."
+msgstr "«%s» no se encontró en el PATH."
+
+#: prefs.js:270
+msgid "Enter a command, with quotes balanced."
+msgstr "Escriba un comando, con las comillas cerradas."
+
+#: prefs.js:301
+#, javascript-format
+msgid "Delete “%s”?"
+msgstr "¿Eliminar «%s»?"
+
+#: prefs.js:326
 msgid "Open menu"
 msgstr "Abrir menú"
 
-#: prefs.js:93
+#: prefs.js:327
 msgid "Keyboard shortcut that shows the menu"
 msgstr "Atajo de teclado que muestra el menú"
 
-#: prefs.js:100
+#: prefs.js:334
 msgid "Disabled"
 msgstr "Desactivado"
 
-#: prefs.js:109
+#: prefs.js:343
 msgid "Reset to default"
 msgstr "Restablecer valor predeterminado"
 
-#: prefs.js:125
+#: prefs.js:359
 msgid "Set Shortcut"
 msgstr "Definir atajo"
 
-#: prefs.js:126
+#: prefs.js:360
 msgid "Press the new key combination, Esc to cancel or Backspace to disable."
 msgstr ""
 "Pulse la nueva combinación de teclas, Esc para cancelar o Retroceso para "
 "desactivar."
 
-#: prefs.js:164
-msgid "General"
-msgstr "General"
+#: prefs.js:435
+msgid "Actions"
+msgstr "Acciones"
 
-#: prefs.js:171
+#: prefs.js:445
 msgid "Appearance"
 msgstr "Apariencia"
 
-#: prefs.js:207
+#: prefs.js:450
+msgid "Buttons"
+msgstr "Botones"
+
+#: prefs.js:452
 msgid "Layout"
 msgstr "Disposición"
 
-#: prefs.js:208
+#: prefs.js:453
 msgid "Automatic"
 msgstr "Automática"
 
-#: prefs.js:208
+#: prefs.js:453
 msgid "Grid"
 msgstr "Cuadrícula"
 
-#: prefs.js:209
+#: prefs.js:454
 msgid "Buttons per row"
 msgstr "Botones por fila"
 
-#: prefs.js:215
+#: prefs.js:460
 msgid "Button size (px)"
 msgstr "Tamaño del botón (px)"
 
-#: prefs.js:216
+#: prefs.js:461
 msgid "Corner radius (px)"
 msgstr "Radio de las esquinas (px)"
 
-#: prefs.js:217
-msgid "Background dimming (%)"
-msgstr "Oscurecimiento del fondo (%)"
+#: prefs.js:462
+msgid "Space between buttons (px)"
+msgstr "Espacio entre botones (px)"
 
-#: prefs.js:218
+#: prefs.js:463
+msgid "Icon size (%)"
+msgstr "Tamaño del icono (%)"
+
+#: prefs.js:464
+msgid "Relative to the button size"
+msgstr "Relativo al tamaño del botón"
+
+#: prefs.js:465
+msgid "Selected button size (%)"
+msgstr "Tamaño del botón seleccionado (%)"
+
+#: prefs.js:466
+msgid "100 turns the growth animation off"
+msgstr "100 desactiva la animación de aumento"
+
+#: prefs.js:467
 msgid "Show labels"
 msgstr "Mostrar etiquetas"
 
-#: prefs.js:221
-msgid "Confirmation"
-msgstr "Confirmación"
+#: prefs.js:469
+msgid "Colors and background"
+msgstr "Colores y fondo"
 
-#: prefs.js:222
-msgid ""
-"Before running an action, show it with a countdown and the Cancel and "
-"Confirm buttons."
-msgstr "Antes de ejecutar una acción, mostrarla con una cuenta regresiva y los botones Cancelar y Confirmar."
+#: prefs.js:473
+msgid "Custom highlight color"
+msgstr "Color de resaltado personalizado"
 
-#: prefs.js:226
-msgid "Ask for confirmation"
-msgstr "Pedir confirmación"
+#: prefs.js:474
+msgid "Use this color instead of the system accent color"
+msgstr "Usar este color en lugar del color de acento del sistema"
 
-#: prefs.js:227
-msgid "Never"
-msgstr "Nunca"
+#: prefs.js:510
+msgid "Show panel background"
+msgstr "Mostrar fondo del panel"
 
-#: prefs.js:228
-msgid "For every action"
-msgstr "Para todas las acciones"
+#: prefs.js:511
+msgid "When off, the buttons float over the dimmed screen"
+msgstr "Si se desactiva, los botones flotan sobre la pantalla oscurecida"
 
-#: prefs.js:229
-msgid "Only for the selected actions"
-msgstr "Solo para las acciones seleccionadas"
+#: prefs.js:512
+msgid "Background dimming (%)"
+msgstr "Oscurecimiento del fondo (%)"
 
-#: prefs.js:231
-msgid "Countdown (seconds)"
-msgstr "Cuenta regresiva (segundos)"
-
-#: prefs.js:232
-msgid "When it ends, the action runs on its own"
-msgstr "Al terminar, la acción se ejecuta automáticamente"
-
-#: prefs.js:234
-msgid "Actions that ask for confirmation"
-msgstr "Acciones que piden confirmación"
-
-#: prefs.js:258
+#: prefs.js:517
 msgid "Behavior"
 msgstr "Comportamiento"
 
-#: prefs.js:262
+#: prefs.js:522
+msgid "General"
+msgstr "General"
+
+#: prefs.js:525
 msgid "Show button in the top bar"
 msgstr "Mostrar botón en la barra superior"
 
-#: actions.js:10
+#: prefs.js:526
+msgid "Open on"
+msgstr "Abrir en"
+
+#: prefs.js:527
+msgid "Monitor with the pointer"
+msgstr "Monitor del puntero"
+
+#: prefs.js:528
+msgid "Primary monitor"
+msgstr "Monitor principal"
+
+#: prefs.js:530
+msgid "Selected when opening"
+msgstr "Seleccionado al abrir"
+
+#: prefs.js:531
+msgid "First action"
+msgstr "Primera acción"
+
+#: prefs.js:532
+msgid "Last action used"
+msgstr "Última acción usada"
+
+#: prefs.js:534
+msgid "Close when clicking outside"
+msgstr "Cerrar al hacer clic fuera"
+
+#: prefs.js:537
+msgid "Confirmation"
+msgstr "Confirmación"
+
+#: prefs.js:538
+msgid ""
+"Before running an action, show it with a countdown and the Cancel and "
+"Confirm buttons."
+msgstr ""
+"Antes de ejecutar una acción, mostrarla con una cuenta regresiva y los "
+"botones Cancelar y Confirmar."
+
+#: prefs.js:542
+msgid "Ask for confirmation"
+msgstr "Pedir confirmación"
+
+#: prefs.js:543
+msgid "Never"
+msgstr "Nunca"
+
+#: prefs.js:544
+msgid "For every action"
+msgstr "Para todas las acciones"
+
+#: prefs.js:545
+msgid "Only for the selected actions"
+msgstr "Solo para las acciones seleccionadas"
+
+#: prefs.js:547
+msgid "Countdown (seconds)"
+msgstr "Cuenta regresiva (segundos)"
+
+#: prefs.js:548
+msgid "When it ends, the action runs on its own"
+msgstr "Al terminar, la acción se ejecuta automáticamente"
+
+#: prefs.js:549
+msgid "Button selected first"
+msgstr "Botón seleccionado primero"
+
+#: prefs.js:551
+msgid "Confirm"
+msgstr "Confirmar"
+
+#: prefs.js:554
+msgid "Actions that ask for confirmation"
+msgstr "Acciones que piden confirmación"
+
+#: prefs.js:590
+msgid "Reset All Settings"
+msgstr "Restablecer toda la configuración"
+
+#: prefs.js:594
+msgid "Reset all settings?"
+msgstr "¿Restablecer toda la configuración?"
+
+#: prefs.js:595
+msgid ""
+"Every option goes back to its default and the custom actions are deleted."
+msgstr ""
+"Todas las opciones vuelven a su valor predeterminado y se eliminan las "
+"acciones personalizadas."
+
+#: prefs.js:600
+msgid "Reset"
+msgstr "Restablecer"
+
+#: actions.js:15
 msgid "Lock"
 msgstr "Bloquear"
 
-#: actions.js:11
+#: actions.js:16
 msgid "Log Out"
 msgstr "Cerrar sesión"
 
-#: actions.js:12
+#: actions.js:17
 msgid "Suspend"
 msgstr "Suspender"
 
-#: actions.js:13
+#: actions.js:18
+msgid "Hibernate"
+msgstr "Hibernar"
+
+#: actions.js:19
 msgid "Switch User"
 msgstr "Cambiar de usuario"
 
-#: actions.js:14
+#: actions.js:20
 msgid "Restart"
 msgstr "Reiniciar"
 
-#: actions.js:15
+#: actions.js:21
 msgid "Power Off"
 msgstr "Apagar"
