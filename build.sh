@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Build, install or pack the extension.
+#   ./build.sh          compile schemas and translations in place
+#   ./build.sh install  build and install to ~/.local/share/gnome-shell/extensions
+#   ./build.sh pack     build a zip ready for extensions.gnome.org
+#   ./build.sh pot      regenerate po/fast-gnome-menu.pot
+#   ./build.sh dev      install and run a nested GNOME Shell to test without logging out
+#   ./build.sh prefs    install and reopen the preferences window with the new prefs.js
+set -euo pipefail
+cd "$(dirname "$0")"
+
+UUID=$(sed -n 's/.*"uuid": *"\([^"]*\)".*/\1/p' metadata.json)
+DOMAIN=fast-gnome-menu
+SOURCES=(extension.js prefs.js actions.js)
+# Shortcut inside ./build.sh dev; the host shell keeps the real one.
+DEV_SHORTCUT='<Super><Alt>x'
+
+build() {
+    glib-compile-schemas --strict schemas
+    for po in po/*.po; do
+        lang=$(basename "$po" .po)
+        mkdir -p "locale/$lang/LC_MESSAGES"
+        msgfmt --check -o "locale/$lang/LC_MESSAGES/$DOMAIN.mo" "$po"
+    done
+}
+
+install() {
+    build
+    dest="$HOME/.local/share/gnome-shell/extensions/$UUID"
+    rm -rf "$dest"
+    mkdir -p "$dest"
+    cp -r metadata.json "${SOURCES[@]}" stylesheet*.css schemas locale "$dest"
+    echo "Installed to $dest"
+}
+
+case "${1:-build}" in
+build) build ;;
+install)
+    install
+    echo "The running shell keeps the old code: use '$0 dev' to test, or log out and back in."
+    ;;
+dev)
+    install
+    # GNOME 49+ replaced --nested with --devkit (package mutter-devkit).
+    major=$(gnome-shell --version | grep -o '[0-9]\+' | head -1)
+    if [ "$major" -ge 49 ]; then mode=--devkit; else mode=--nested; fi
+    missing=()
+    command -v dbus-run-session >/dev/null || missing+=(dbus-daemon)
+    [ "$mode" = --devkit ] && [ ! -x /usr/libexec/mutter-devkit ] && missing+=(mutter-devkit)
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "Missing packages: ${missing[*]} (Fedora: sudo dnf install ${missing[*]})" >&2
+        exit 1
+    fi
+    # The nested shell gets its own dconf database: only this extension is
+    # enabled, and the shortcut is changed because the host shell grabs ours.
+    # The extension settings are copied from the real session on every run.
+    settings_path=/org/gnome/shell/extensions/$DOMAIN/
+    current=$(dconf dump "$settings_path")
+    profile="${XDG_CACHE_HOME:-$HOME/.cache}/$DOMAIN/dconf-profile"
+    mkdir -p "$(dirname "$profile")"
+    # D-Bus object paths (used by dconf for the database name) forbid hyphens.
+    echo "user-db:${DOMAIN//-/_}_dev" >"$profile"
+    export DCONF_PROFILE=$profile
+    dconf reset -f "$settings_path"
+    [ -n "$current" ] && dconf load "$settings_path" <<<"$current"
+    dconf write "${settings_path}toggle-menu" "['$DEV_SHORTCUT']"
+    dconf write /org/gnome/shell/enabled-extensions "['$UUID']"
+    dconf write /org/gnome/shell/welcome-dialog-last-shown-version "'999'"
+
+    export FAST_GNOME_MENU_DRY_RUN=1
+    export MUTTER_DEBUG_DUMMY_MODE_SPECS=${MUTTER_DEBUG_DUMMY_MODE_SPECS:-1600x900}
+    echo "Starting nested GNOME Shell ($mode). Actions only log, they are not executed."
+    echo "Open the menu with $DEV_SHORTCUT or the icon in the top bar."
+    # Show only this extension's messages and JS errors with their stack traces.
+    set +e
+    dbus-run-session -- gnome-shell $mode 2>&1 |
+        grep --line-buffered -E "$UUID|JS ERROR|JS WARNING|@(file|resource):"
+    status=${PIPESTATUS[0]}
+    set -e
+    if [ "$status" -ne 0 ]; then
+        echo "gnome-shell exited with status $status. Run it unfiltered to see why:" >&2
+        echo "  dbus-run-session -- gnome-shell $mode" >&2
+    fi
+    ;;
+prefs)
+    install
+    # The prefs process caches modules; kill it so the new prefs.js is loaded.
+    pkill -f 'gjs -m /usr/share/gnome-shell/org.gnome.Shell.Extensions' || true
+    gnome-extensions prefs "$UUID"
+    ;;
+pack)
+    build
+    gnome-extensions pack --force --podir=po \
+        --extra-source=actions.js \
+        --extra-source=stylesheet-dark.css --extra-source=stylesheet-light.css .
+    ;;
+pot)
+    xgettext --from-code=UTF-8 --language=JavaScript --keyword=_ \
+        --package-name="$UUID" -o "po/$DOMAIN.pot" "${SOURCES[@]}"
+    for po in po/*.po; do msgmerge -U --backup=none "$po" "po/$DOMAIN.pot"; done
+    ;;
+*) echo "usage: $0 [build|install|dev|prefs|pack|pot]" >&2; exit 1 ;;
+esac
