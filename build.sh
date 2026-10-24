@@ -3,7 +3,8 @@
 #   ./build.sh            compile schemas and translations in place
 #   ./build.sh install    build and install to ~/.local/share/gnome-shell/extensions
 #   ./build.sh stage DIR  build and copy the extension to DIR/<uuid> (used by the tests)
-#   ./build.sh test       install and run tests/smoke.sh in a headless shell (screenshots in tests/output)
+#   ./build.sh unit       run the unit tests (gjs only, a few seconds)
+#   ./build.sh test       unit tests, then tests/smoke.sh in a headless shell (screenshots in tests/output)
 #   ./build.sh dev        install and run a nested GNOME Shell to test without logging out
 #   ./build.sh prefs      install and reopen the preferences window with the new prefs.js
 #   ./build.sh pack       build a zip ready for extensions.gnome.org
@@ -93,8 +94,12 @@ stage)
     [ -n "${2:-}" ] || { echo "usage: $0 stage DIR" >&2; exit 1; }
     stage "$2"
     ;;
+unit)
+    gjs -m tests/unit.js
+    ;;
 test)
-    install
+    # Nothing is installed in the real session; smoke.sh stages its own copy.
+    gjs -m tests/unit.js
     tests/smoke.sh "${2:-tests/output}"
     ;;
 prefs)
@@ -116,5 +121,5 @@ pot)
         --package-name="$UUID" -o "po/$DOMAIN.pot" "${SOURCES[@]}"
     for po in po/*.po; do msgmerge -U --backup=none "$po" "po/$DOMAIN.pot"; done
     ;;
-*) echo "usage: $0 [build|install|stage|test|dev|prefs|pack|pot]" >&2; exit 1 ;;
+*) echo "usage: $0 [build|install|stage|unit|test|dev|prefs|pack|pot]" >&2; exit 1 ;;
 esac

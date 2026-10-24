@@ -5,6 +5,9 @@
 # D-Bus session bus, dconf database and XDG_DATA_HOME, and no display.
 #
 #   tests/smoke.sh <output dir>     (normally run through ./build.sh test)
+#
+# The extension is staged from the working tree into a temporary directory,
+# so the copy installed in ~/.local is neither used nor changed.
 set -euo pipefail
 
 if [ -z "${FGM_SMOKE_INNER:-}" ]; then
@@ -16,7 +19,7 @@ if [ -z "${FGM_SMOKE_INNER:-}" ]; then
 
     ext="$work/share/gnome-shell/extensions"
     mkdir -p "$ext"
-    cp -r "$HOME/.local/share/gnome-shell/extensions/$uuid" "$ext/"
+    "$root/build.sh" stage "$ext"
     cp -r "$root/tests/devtools" "$ext/fast-gnome-menu-devtools@local"
     rm -f "$out"/*.png "$out"/*.log
 
@@ -59,6 +62,14 @@ js() {
     [[ $reply == "(true,"* ]] || { echo "Eval failed: $1 -> $reply"; return 1; }
     echo "$reply"
 }
+# Runs an expression for its side effects; any failure stops the test.
+run() {
+    local reply
+    reply=$(js "$1") || { echo "$reply"; exit 1; }
+}
+# True only when the expression evaluates to true. Eval replies
+# "(true, '<result>')", where the first true just means the call worked.
+is_true() { [[ $(js "$1" 2>/dev/null) == "(true, 'true')" ]]; }
 shot() {
     gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Screenshot \
         --method org.gnome.Shell.Screenshot.Screenshot false false "$FGM_OUT/$1.png" >/dev/null
@@ -68,32 +79,35 @@ pause() { sleep "${1:-0.6}"; }
 
 EXT="Main.extensionManager.lookup('$FGM_UUID')"
 MENU="$EXT.stateObj._menu"
-open_menu() { js "Main.overview.hide(); $EXT.stateObj.toggle(); 1" >/dev/null; pause; }
-close_menu() { js "$MENU?.close(false); 1" >/dev/null; pause 0.3; }
+open_menu() { run "Main.overview.hide(); $EXT.stateObj.toggle(); 1"; pause; }
+close_menu() { run "$MENU?.close(false); 1"; pause 0.3; }
 
 for _ in $(seq 1 60); do
-    js "$EXT?.state === 1 && global.context.unsafe_mode" 2>/dev/null | grep -q true && break
+    is_true "$EXT?.state === 1 && global.context.unsafe_mode" && break
     sleep 0.5
 done
-js "$EXT.state === 1" | grep -q true || { echo "extension did not start"; exit 1; }
-js "Main.overview.hide(); 1" >/dev/null
+is_true "$EXT.state === 1" || { echo "extension did not start"; exit 1; }
+run "Main.overview.hide(); 1"
 pause 1
 
 echo "1. default menu (4 actions, dark)"
 open_menu
 shot 01-default
-js "$MENU._move(1, 0); 1" >/dev/null; pause
+run "$MENU._move(1, 0); 1"; pause
 shot 02-focus-moved
-js "$MENU._buttons[1].emit('clicked', 0); 1" >/dev/null; pause
-js "$EXT.stateObj._menu === null" | grep -q true || { echo "menu did not close after an action"; exit 1; }
+run "$MENU._buttons[1].emit('clicked', 0); 1"; pause
+is_true "$EXT.stateObj._menu === null" || { echo "menu did not close after an action"; exit 1; }
 grep -q "Dry run: would activate logout" "$log" || { echo "action was not activated"; exit 1; }
 
 echo "2. confirmation"
 dconf write ${P}confirm-mode "'all'"
 open_menu
-js "$MENU._buttons[0].emit('clicked', 0); 1" >/dev/null; pause 1
+# Two quick clicks must not stack two confirmations (each with a countdown).
+run "$MENU._buttons[0].emit('clicked', 0); $MENU._buttons[1].emit('clicked', 0); 1"; pause 1
+is_true "$MENU._monitorBox.get_children().filter(c => c.has_style_class_name('fgm-confirm')).length === 1" ||
+    { echo "more than one confirmation opened"; exit 1; }
 shot 03-confirmation
-js "$MENU._hideConfirmation(); 1" >/dev/null; pause
+run "$MENU._hideConfirmation(); 1"; pause
 shot 04-confirmation-cancelled
 close_menu
 
@@ -102,17 +116,17 @@ dconf write ${P}custom-actions "[('custom-test0001', 'Terminal', 'utilities-term
 dconf write ${P}actions "['lock-screen', 'logout', 'suspend', 'custom-test0001', 'restart', 'power-off']"
 dconf write ${P}confirm-mode "'none'"
 dconf write ${P}highlight-color "'#e5a50a'"
-dconf write ${P}show-panel false
+dconf write ${P}panel-style "'none'"
 open_menu
-js "$MENU._move(1, 0); $MENU._move(1, 0); $MENU._move(0, 1); 1" >/dev/null; pause
+run "$MENU._move(1, 0); $MENU._move(1, 0); $MENU._move(0, 1); 1"; pause
 shot 05-six-custom-color
-js "$MENU._buttons[$MENU._ids.indexOf('custom-test0001')].emit('clicked', 0); 1" >/dev/null; pause
+run "$MENU._buttons[$MENU._ids.indexOf('custom-test0001')].emit('clicked', 0); 1"; pause
 grep -q "Dry run: would activate custom-test0001" "$log" || { echo "custom action was not activated"; exit 1; }
 
 echo "4. five actions (die face), light style, larger spacing"
 dconf write ${P}actions "['lock-screen', 'logout', 'suspend', 'restart', 'power-off']"
 dconf reset ${P}highlight-color
-dconf reset ${P}show-panel
+dconf reset ${P}panel-style
 dconf write ${P}spacing 28
 dconf write /org/gnome/desktop/interface/color-scheme "'prefer-light'"
 pause 1
@@ -120,9 +134,67 @@ open_menu
 shot 06-five-light
 close_menu
 dconf reset /org/gnome/desktop/interface/color-scheme
+dconf reset ${P}spacing
 
-echo "5. preferences window"
-n=7
+echo "5. circle, translucent panel, blur, top-right corner"
+dconf write ${P}actions "['lock-screen', 'logout', 'suspend', 'custom-test0001', 'restart', 'power-off']"
+dconf write ${P}layout "'circle'"
+dconf write ${P}panel-style "'translucent'"
+dconf write ${P}backdrop-blur 24
+dconf write ${P}position "'top-right'"
+open_menu
+run "$MENU._move(1, 0); 1"; pause
+shot 07-circle-blur-top-right
+close_menu
+
+echo "6. circle with center, bottom"
+dconf write ${P}actions "['lock-screen', 'logout', 'suspend', 'restart', 'power-off']"
+dconf write ${P}layout "'circle-center'"
+dconf reset ${P}panel-style
+dconf reset ${P}backdrop-blur
+dconf write ${P}position "'bottom'"
+open_menu
+shot 08-circle-center-bottom
+close_menu
+
+echo "7. custom drawing (T shape), left, confirmation keeps the position"
+dconf write ${P}layout "'custom'"
+dconf write ${P}custom-layout "['xxx', '.x.', '.x.']"
+dconf write ${P}position "'left'"
+dconf write ${P}confirm-mode "'all'"
+open_menu
+shot 09-custom-left
+run "$MENU._buttons[0].emit('clicked', 0); 1"; pause 1
+shot 10-custom-left-confirmation
+close_menu
+dconf write ${P}confirm-mode "'none'"
+
+echo "8. HiDPI: scale factor 2"
+dconf reset ${P}custom-layout
+dconf reset ${P}position
+dconf write ${P}layout "'auto'"
+dconf write ${P}actions "['lock-screen', 'logout', 'suspend', 'restart', 'power-off']"
+# Headless Wayland ignores the scaling-factor key; set the UI scale directly.
+run "imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor = 2; 1"
+pause 2
+open_menu
+shot 11-hidpi
+# The menu is larger than this small scaled screen, so it must shrink to fit.
+# Checks the panel and every button, which could stick out of a clipped panel.
+is_true "[$MENU._menu, ...$MENU._buttons].every(a => { const r = a.get_transformed_extents();
+    const s = global.stage; return r.get_x() >= 0 && r.get_y() >= 0 &&
+    r.get_x() + r.get_width() <= s.width + 1 && r.get_y() + r.get_height() <= s.height + 1; })" ||
+    { echo "menu does not fit the screen"; exit 1; }
+# Buttons must not overlap once their CSS size is scaled.
+is_true "(() => { const b = $MENU._buttons.map(x => x.get_transformed_extents());
+    return b.every((r, i) => b.every((o, j) => i >= j || !r.intersection(o)[0])); })()" ||
+    { echo "buttons overlap at scale 2"; exit 1; }
+close_menu
+run "imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor = 1; 1"
+pause 2
+
+echo "9. preferences window"
+n=12
 for page in actions appearance behavior; do
     # The prefs app is D-Bus activated: pass the page through the activation
     # environment and restart only the instance on this private bus.
@@ -133,7 +205,7 @@ for page in actions appearance behavior; do
     [ -n "$pid" ] && kill "$pid" && pause 1
     gnome-extensions prefs "$FGM_UUID" >/dev/null 2>&1 || true
     pause 4
-    shot "0$n-preferences-$page"
+    shot "$n-preferences-$page"
     n=$((n + 1))
 done
 
