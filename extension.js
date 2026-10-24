@@ -320,8 +320,10 @@ const PowerMenu = GObject.registerClass({
         button.set_style(baseStyle);
         button.set_pivot_point(0.5, 0.5);
 
+        // Not while the confirmation is up: the fading menu would take the
+        // focus away from Cancel/Confirm.
         button.connect('notify::hover', () => {
-            if (button.hover)
+            if (button.hover && !this._confirmBox)
                 button.grab_key_focus();
         });
         // The selected button grows above its neighbours.
@@ -348,6 +350,11 @@ const PowerMenu = GObject.registerClass({
     }
 
     _showConfirmation(id, action, button) {
+        // The menu stays clickable while it fades out; a second confirmation
+        // would orphan the first countdown, which could then run its action.
+        if (this._confirmBox)
+            return;
+
         const {size, radius, spacing} = this._metrics;
         const tileSize = Math.round(size * 1.25);
         this._confirmFor = button;
@@ -677,7 +684,9 @@ class Indicator extends PanelMenu.Button {
 
     vfunc_event(event) {
         const type = event.type();
-        if (type === Clutter.EventType.BUTTON_PRESS || type === Clutter.EventType.TOUCH_BEGIN) {
+        const activateKeys = [Clutter.KEY_Return, Clutter.KEY_KP_Enter, Clutter.KEY_space];
+        if (type === Clutter.EventType.BUTTON_PRESS || type === Clutter.EventType.TOUCH_BEGIN ||
+            (type === Clutter.EventType.KEY_PRESS && activateKeys.includes(event.get_key_symbol()))) {
             this._onActivate();
             return Clutter.EVENT_STOP;
         }
