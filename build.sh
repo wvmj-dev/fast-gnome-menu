@@ -6,6 +6,7 @@
 #   ./build.sh pot      regenerate po/fast-gnome-menu.pot
 #   ./build.sh dev      install and run a nested GNOME Shell to test without logging out
 #   ./build.sh prefs    install and reopen the preferences window with the new prefs.js
+#   ./build.sh test     install and run tests/smoke.sh in a headless shell (screenshots in tests/output)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -82,6 +83,10 @@ dev)
         echo "  dbus-run-session -- gnome-shell $mode" >&2
     fi
     ;;
+test)
+    install
+    tests/smoke.sh "${2:-tests/output}"
+    ;;
 prefs)
     install
     # The prefs process caches modules; kill it so the new prefs.js is loaded.
@@ -99,5 +104,5 @@ pot)
         --package-name="$UUID" -o "po/$DOMAIN.pot" "${SOURCES[@]}"
     for po in po/*.po; do msgmerge -U --backup=none "$po" "po/$DOMAIN.pot"; done
     ;;
-*) echo "usage: $0 [build|install|dev|prefs|pack|pot]" >&2; exit 1 ;;
+*) echo "usage: $0 [build|install|dev|prefs|test|pack|pot]" >&2; exit 1 ;;
 esac
