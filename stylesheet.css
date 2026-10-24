@@ -1,0 +1,104 @@
+/* Fast GNOME Menu — dark variant (also used as fallback) */
+.fgm-menu {
+  background-color: #2e2e32;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.fgm-dim {
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+/* Menu buttons. The selected one also grows (FOCUS_SCALE in extension.js). */
+.fgm-button {
+  background-color: #3a3a3f;
+  color: #ffffff;
+  border: 2px solid transparent;
+  transition-duration: 200ms;
+}
+
+.fgm-button:hover {
+  background-color: #46464c;
+}
+
+.fgm-button:focus,
+.fgm-tile {
+  background-color: -st-accent-color;
+  color: -st-accent-fg-color;
+  border-color: st-transparentize(#ffffff, 0.35);
+}
+
+.fgm-button:active {
+  background-color: st-darken(-st-accent-color, 8%);
+  color: -st-accent-fg-color;
+}
+
+.fgm-button:insensitive {
+  color: st-transparentize(#ffffff, 0.6);
+  background-color: st-transparentize(#3a3a3f, 0.5);
+}
+
+.fgm-label {
+  margin-top: 8px;
+  font-weight: bold;
+}
+
+.fgm-empty {
+  color: #ffffff;
+  padding: 24px;
+}
+
+/* Confirmation */
+.fgm-countdown {
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4px;
+}
+
+.fgm-progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background-color: #3a3a3f;
+}
+
+.fgm-progress {
+  height: 6px;
+  border-radius: 3px;
+  background-color: -st-accent-color;
+}
+
+.fgm-dialog-buttons {
+  spacing: 12px;
+  margin-top: 4px;
+}
+
+.fgm-dialog-button {
+  min-width: 120px;
+  padding: 10px 24px;
+  border-radius: 999px;
+  font-weight: bold;
+  color: #ffffff;
+  background-color: #3a3a3f;
+  border: 2px solid transparent;
+  transition-duration: 150ms;
+}
+
+.fgm-dialog-button:hover {
+  background-color: #46464c;
+}
+
+.fgm-dialog-button:focus {
+  border-color: -st-accent-color;
+}
+
+.fgm-dialog-button.default {
+  color: -st-accent-fg-color;
+  background-color: -st-accent-color;
+}
+
+.fgm-dialog-button.default:hover {
+  background-color: st-lighten(-st-accent-color, 6%);
+}
+
+.fgm-dialog-button.default:focus {
+  border-color: st-transparentize(#ffffff, 0.4);
+}

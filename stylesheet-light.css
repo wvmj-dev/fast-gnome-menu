@@ -1,0 +1,104 @@
+/* Fast GNOME Menu — light variant */
+.fgm-menu {
+  background-color: #fafafb;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.fgm-dim {
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+/* Menu buttons. The selected one also grows (FOCUS_SCALE in extension.js). */
+.fgm-button {
+  background-color: #ebebed;
+  color: #222226;
+  border: 2px solid transparent;
+  transition-duration: 200ms;
+}
+
+.fgm-button:hover {
+  background-color: #dcdce0;
+}
+
+.fgm-button:focus,
+.fgm-tile {
+  background-color: -st-accent-color;
+  color: -st-accent-fg-color;
+  border-color: st-transparentize(#000000, 0.65);
+}
+
+.fgm-button:active {
+  background-color: st-darken(-st-accent-color, 8%);
+  color: -st-accent-fg-color;
+}
+
+.fgm-button:insensitive {
+  color: st-transparentize(#222226, 0.6);
+  background-color: st-transparentize(#ebebed, 0.5);
+}
+
+.fgm-label {
+  margin-top: 8px;
+  font-weight: bold;
+}
+
+.fgm-empty {
+  color: #222226;
+  padding: 24px;
+}
+
+/* Confirmation */
+.fgm-countdown {
+  color: rgba(0, 0, 0, 0.6);
+  margin-top: 4px;
+}
+
+.fgm-progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background-color: #ebebed;
+}
+
+.fgm-progress {
+  height: 6px;
+  border-radius: 3px;
+  background-color: -st-accent-color;
+}
+
+.fgm-dialog-buttons {
+  spacing: 12px;
+  margin-top: 4px;
+}
+
+.fgm-dialog-button {
+  min-width: 120px;
+  padding: 10px 24px;
+  border-radius: 999px;
+  font-weight: bold;
+  color: #222226;
+  background-color: #ebebed;
+  border: 2px solid transparent;
+  transition-duration: 150ms;
+}
+
+.fgm-dialog-button:hover {
+  background-color: #dcdce0;
+}
+
+.fgm-dialog-button:focus {
+  border-color: -st-accent-color;
+}
+
+.fgm-dialog-button.default {
+  color: -st-accent-fg-color;
+  background-color: -st-accent-color;
+}
+
+.fgm-dialog-button.default:hover {
+  background-color: st-lighten(-st-accent-color, 6%);
+}
+
+.fgm-dialog-button.default:focus {
+  border-color: st-transparentize(#000000, 0.4);
+}

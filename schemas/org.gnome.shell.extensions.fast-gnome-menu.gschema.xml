@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.fast-gnome-menu"
+          path="/org/gnome/shell/extensions/fast-gnome-menu/">
+    <key name="toggle-menu" type="as">
+      <default><![CDATA[['<Super>x']]]></default>
+      <summary>Keyboard shortcut that opens the menu</summary>
+    </key>
+    <key name="actions" type="as">
+      <default>['lock-screen', 'logout', 'restart', 'power-off']</default>
+      <summary>Enabled actions, in display order</summary>
+      <description>Known actions: lock-screen, logout, suspend, switch-user, restart, power-off.</description>
+    </key>
+    <key name="layout" type="s">
+      <choices>
+        <choice value="auto"/>
+        <choice value="grid"/>
+      </choices>
+      <default>'auto'</default>
+      <summary>How the buttons are arranged</summary>
+      <description>"auto" picks the arrangement from the number of buttons (1-3 in a row, 4 as 2x2, 5 like a die face, 6 as 2x3); "grid" uses a fixed number of columns.</description>
+    </key>
+    <key name="columns" type="i">
+      <range min="1" max="6"/>
+      <default>4</default>
+      <summary>Number of buttons per row in the grid layout</summary>
+    </key>
+    <key name="button-size" type="i">
+      <range min="64" max="256"/>
+      <default>128</default>
+      <summary>Button size in pixels</summary>
+    </key>
+    <key name="corner-radius" type="i">
+      <range min="0" max="64"/>
+      <default>24</default>
+      <summary>Corner radius of the buttons in pixels</summary>
+    </key>
+    <key name="show-labels" type="b">
+      <default>true</default>
+      <summary>Show the action name below the icon</summary>
+    </key>
+    <key name="backdrop-opacity" type="i">
+      <range min="0" max="100"/>
+      <default>50</default>
+      <summary>Opacity of the background dimming (percent)</summary>
+    </key>
+    <key name="confirm-mode" type="s">
+      <choices>
+        <choice value="none"/>
+        <choice value="all"/>
+        <choice value="custom"/>
+      </choices>
+      <default>'none'</default>
+      <summary>Which actions ask for confirmation</summary>
+      <description>"none" runs every action at once, "all" asks for every action, "custom" asks only for the actions in confirm-list.</description>
+    </key>
+    <key name="confirm-list" type="as">
+      <default>['logout', 'restart', 'power-off']</default>
+      <summary>Actions that ask for confirmation when confirm-mode is "custom"</summary>
+    </key>
+    <key name="confirm-timeout" type="i">
+      <range min="5" max="300"/>
+      <default>60</default>
+      <summary>Seconds before a confirmation runs the action on its own</summary>
+    </key>
+    <key name="show-indicator" type="b">
+      <default>true</default>
+      <summary>Show a button in the top bar</summary>
+    </key>
+  </schema>
+</schemalist>

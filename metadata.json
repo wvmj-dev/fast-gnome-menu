@@ -1,0 +1,14 @@
+{
+  "uuid": "fast-gnome-menu@wvmj-dev.github.io",
+  "name": "Fast GNOME Menu",
+  "description": "An interactive power menu with rounded square buttons: lock screen, log out, suspend, restart and power off. Navigate with the arrow keys, the mouse or a shortcut key.",
+  "settings-schema": "org.gnome.shell.extensions.fast-gnome-menu",
+  "gettext-domain": "fast-gnome-menu",
+  "shell-version": [
+    "48",
+    "49",
+    "50"
+  ],
+  "version": 1,
+  "url": "https://github.com/wvmj-dev/fast-gnome-menu"
+}
