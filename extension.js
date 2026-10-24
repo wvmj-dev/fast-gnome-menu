@@ -10,12 +10,12 @@ import {Extension, gettext as _, ngettext} from 'resource:///org/gnome/shell/ext
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
+import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
-import {getActions} from './actions.js';
+import {CUSTOM_ICON, CUSTOM_PREFIX, getActions} from './actions.js';
 
 const ANIMATION_TIME = 150;
 const FOCUS_TIME = 200;
-const FOCUS_SCALE = 1.1;
 
 // SystemActions property that tells whether each action is currently allowed.
 const AVAILABILITY = {
@@ -25,6 +25,24 @@ const AVAILABILITY = {
     'restart': 'canRestart',
     'power-off': 'canPowerOff',
 };
+
+/**
+ * @param {string} value color from the settings
+ * @returns {?string} the color as #rrggbb, or null if it is not one. Only
+ *   this exact form ever reaches an inline style.
+ */
+function parseColor(value) {
+    return /^#[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : null;
+}
+
+/**
+ * @param {string} hex color as #rrggbb
+ * @returns {string} black or white, whichever reads better on the color
+ */
+function contrastColor(hex) {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? '#000000' : '#ffffff';
+}
 
 /**
  * Grid cell [column, row] of each button. Columns may be fractional, so a
@@ -72,12 +90,32 @@ const PowerMenu = GObject.registerClass({
             coordinate: Clutter.BindCoordinate.ALL,
         }));
         this.set_style(`background-color: rgba(0, 0, 0, ${settings.get_int('backdrop-opacity') / 100});`);
-        this.connect('destroy', () => this._stopCountdown());
+        this._cancellable = new Gio.Cancellable();
+        this.connect('destroy', () => {
+            this._stopCountdown();
+            this._cancellable.cancel();
+        });
 
         const size = settings.get_int('button-size');
         const radius = Math.min(settings.get_int('corner-radius'), size / 2);
-        const spacing = Math.round(size * 0.12);
-        this._metrics = {size, radius, spacing};
+        const spacing = settings.get_int('spacing');
+        this._metrics = {
+            size,
+            radius,
+            spacing,
+            iconScale: settings.get_int('icon-size') / 100,
+            focusScale: settings.get_int('focus-scale') / 100,
+        };
+
+        const highlight = parseColor(settings.get_string('highlight-color'));
+        this._highlight = highlight;
+        this._highlightStyle = highlight
+            ? `background-color: ${highlight}; color: ${contrastColor(highlight)};` : '';
+        this._showPanel = settings.get_boolean('show-panel');
+        this._closeOnClickOutside = settings.get_boolean('close-on-click-outside');
+        this._confirmDefault = settings.get_string('confirm-default');
+        this._initialId = settings.get_string('initial-focus') === 'last'
+            ? settings.get_string('last-action') : null;
 
         const mode = settings.get_string('confirm-mode');
         const confirmList = settings.get_strv('confirm-list');
@@ -92,7 +130,8 @@ const PowerMenu = GObject.registerClass({
         }));
         this.add_child(this._dim);
 
-        const monitor = Main.layoutManager.currentMonitor;
+        const monitor = settings.get_string('monitor') === 'primary'
+            ? Main.layoutManager.primaryMonitor : Main.layoutManager.currentMonitor;
         this._monitorBox = new St.Widget({layout_manager: new Clutter.BinLayout()});
         this._monitorBox.set_position(monitor.x, monitor.y);
         this._monitorBox.set_size(monitor.width, monitor.height);
@@ -108,10 +147,11 @@ const PowerMenu = GObject.registerClass({
         });
         this._monitorBox.add_child(this._menu);
 
-        const catalog = getActions(_);
+        const catalog = getActions(_, settings.get_value('custom-actions').deepUnpack());
         const systemActions = SystemActions.getDefault();
         const ids = settings.get_strv('actions').filter(id => catalog.has(id));
 
+        this._ids = ids;
         this._buttons = [];
         this._shortcuts = new Map();
 
@@ -120,6 +160,8 @@ const PowerMenu = GObject.registerClass({
             const prop = AVAILABILITY[id];
             const button = this._createButton(action, settings.get_boolean('show-labels'));
             button.reactive = prop ? systemActions[prop] : true;
+            if (id === 'hibernate')
+                this._checkHibernate(button);
             button.connect('clicked', () => {
                 if (this._needsConfirmation(id))
                     this._showConfirmation(id, action, button);
@@ -129,7 +171,7 @@ const PowerMenu = GObject.registerClass({
             this._buttons.push(button);
 
             this._shortcuts.set(String(i + 1), button);
-            if (!this._shortcuts.has(action.key))
+            if (action.key && !this._shortcuts.has(action.key))
                 this._shortcuts.set(action.key, button);
         });
 
@@ -153,7 +195,8 @@ const PowerMenu = GObject.registerClass({
         const height = Math.max(...cells.map(([, row]) => row)) * step + size + 2 * spacing;
 
         this._menu.set_size(Math.round(width), Math.round(height));
-        this._menu.set_style(`border-radius: ${radius + spacing}px;`);
+        const panel = this._showPanel ? '' : 'background-color: transparent; border-width: 0; box-shadow: none;';
+        this._menu.set_style(`border-radius: ${radius + spacing}px; ${panel}`);
 
         this._centers = this._buttons.map((button, i) => {
             const [col, row] = cells[i];
@@ -163,6 +206,24 @@ const PowerMenu = GObject.registerClass({
             this._menu.add_child(button);
             return [x + size / 2, y + size / 2];
         });
+    }
+
+    // SystemActions has no hibernate, so ask logind; the button stays
+    // disabled until it answers "yes" (or "challenge", i.e. polkit asks).
+    _checkHibernate(button) {
+        button.reactive = false;
+        Gio.DBus.system.call('org.freedesktop.login1', '/org/freedesktop/login1',
+            'org.freedesktop.login1.Manager', 'CanHibernate', null,
+            new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE, -1, this._cancellable,
+            (conn, res) => {
+                try {
+                    const [answer] = conn.call_finish(res).deepUnpack();
+                    button.reactive = answer === 'yes' || answer === 'challenge';
+                } catch (e) {
+                    if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                        logError(e, 'CanHibernate failed');
+                }
+            });
     }
 
     _createContent(action, size, showLabel) {
@@ -176,7 +237,8 @@ const PowerMenu = GObject.registerClass({
         content.add_child(new St.Icon({
             style_class: 'fgm-icon',
             icon_name: action.iconName,
-            icon_size: Math.round(size * 0.34),
+            fallback_icon_name: CUSTOM_ICON,
+            icon_size: Math.round(size * this._metrics.iconScale),
             x_align: Clutter.ActorAlign.CENTER,
         }));
         if (showLabel) {
@@ -198,7 +260,8 @@ const PowerMenu = GObject.registerClass({
             child: this._createContent(action, size, showLabel),
             accessible_name: action.name,
         });
-        button.set_style(`width: ${size}px; height: ${size}px; border-radius: ${radius}px;`);
+        const baseStyle = `width: ${size}px; height: ${size}px; border-radius: ${radius}px;`;
+        button.set_style(baseStyle);
         button.set_pivot_point(0.5, 0.5);
 
         button.connect('notify::hover', () => {
@@ -207,15 +270,17 @@ const PowerMenu = GObject.registerClass({
         });
         // The selected button grows above its neighbours.
         button.connect('key-focus-in', () => {
+            button.set_style(baseStyle + this._highlightStyle);
             button.get_parent()?.set_child_above_sibling(button, null);
             button.ease({
-                scale_x: FOCUS_SCALE,
-                scale_y: FOCUS_SCALE,
+                scale_x: this._metrics.focusScale,
+                scale_y: this._metrics.focusScale,
                 duration: FOCUS_TIME,
                 mode: Clutter.AnimationMode.EASE_OUT_BACK,
             });
         });
         button.connect('key-focus-out', () => {
+            button.set_style(baseStyle);
             button.ease({
                 scale_x: 1,
                 scale_y: 1,
@@ -255,15 +320,19 @@ const PowerMenu = GObject.registerClass({
             y_expand: true,
             opacity: 0,
         });
-        box.set_style(`padding: ${2 * spacing}px; spacing: ${spacing}px; border-radius: ${radius + 2 * spacing}px;`);
+        // Spacing can be 0 in the menu; the confirmation always needs room.
+        const pad = Math.max(2 * spacing, 16);
+        box.set_style(`padding: ${pad}px; spacing: ${pad / 2}px; border-radius: ${radius + pad}px;`);
 
         // The selected action, same shape as in the menu, a bit larger.
+        // Not an fgm-button: a non-reactive St widget is :insensitive and
+        // would get the disabled look.
         const tile = new St.Bin({
-            style_class: 'fgm-button fgm-tile',
+            style_class: 'fgm-tile',
             child: this._createContent(action, tileSize, true),
             x_align: Clutter.ActorAlign.CENTER,
         });
-        tile.set_style(`width: ${tileSize}px; height: ${tileSize}px; border-radius: ${Math.round(radius * 1.25)}px;`);
+        tile.set_style(`width: ${tileSize}px; height: ${tileSize}px; border-radius: ${Math.round(radius * 1.25)}px; ${this._highlightStyle}`);
         box.add_child(tile);
 
         this._countdownLabel = new St.Label({
@@ -277,6 +346,8 @@ const PowerMenu = GObject.registerClass({
             x_expand: true,
         });
         const bar = new St.Widget({style_class: 'fgm-progress'});
+        if (this._highlight)
+            bar.set_style(`background-color: ${this._highlight};`);
         track.add_child(bar);
         // Once the track has its width, the bar empties over the countdown.
         const widthId = track.connect('notify::width', () => {
@@ -309,6 +380,7 @@ const PowerMenu = GObject.registerClass({
             can_focus: true,
             x_expand: true,
         });
+        confirm.set_style(this._highlightStyle);
         confirm.connect('clicked', () => this.emit('action-activated', id));
         buttons.add_child(cancel);
         buttons.add_child(confirm);
@@ -326,7 +398,7 @@ const PowerMenu = GObject.registerClass({
             duration: ANIMATION_TIME,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
         });
-        confirm.grab_key_focus();
+        (this._confirmDefault === 'confirm' ? confirm : cancel).grab_key_focus();
 
         this._remaining = this._confirmTimeout;
         this._updateCountdown();
@@ -391,7 +463,8 @@ const PowerMenu = GObject.registerClass({
         Main.uiGroup.add_child(this);
         this._grab = Main.pushModal(this, {actionMode: Shell.ActionMode.SYSTEM_MODAL});
 
-        const first = this._buttons.find(b => b.reactive);
+        const last = this._buttons[this._ids.indexOf(this._initialId)];
+        const first = last?.reactive ? last : this._buttons.find(b => b.reactive);
         (first ?? this).grab_key_focus();
 
         this._menu.set_pivot_point(0.5, 0.5);
@@ -575,7 +648,7 @@ const PowerMenu = GObject.registerClass({
         if (this._confirmBox) {
             if (!this._confirmBox.contains(actor))
                 this._hideConfirmation();
-        } else if (!this._menu.contains(actor)) {
+        } else if (this._closeOnClickOutside && !this._menu.contains(actor)) {
             this.close();
         }
         return Clutter.EVENT_STOP;
@@ -642,6 +715,7 @@ export default class FastGnomeMenuExtension extends Extension {
         const menu = new PowerMenu(this._settings);
         menu.connect('action-activated', (_menu, id) => {
             menu.close(false);
+            this._settings.set_string('last-action', id);
             this._activate(id);
         });
         menu.connect('destroy', () => {
@@ -671,6 +745,11 @@ export default class FastGnomeMenuExtension extends Extension {
             return;
         }
 
+        if (id.startsWith(CUSTOM_PREFIX)) {
+            this._runCustom(id);
+            return;
+        }
+
         const systemActions = SystemActions.getDefault();
 
         try {
@@ -688,6 +767,9 @@ export default class FastGnomeMenuExtension extends Extension {
             case 'suspend':
                 systemActions.activateSuspend();
                 break;
+            case 'hibernate':
+                this._callLogind('Hibernate');
+                break;
             case 'switch-user':
                 systemActions.activateSwitchUser();
                 break;
@@ -700,6 +782,24 @@ export default class FastGnomeMenuExtension extends Extension {
             }
         } catch (e) {
             logError(e, `[${this.uuid}] Failed to run action ${id}`);
+        }
+    }
+
+    // The command line is split into argv like a shell would, but no shell
+    // runs it: no expansion, pipes or redirections. Spawn errors are shown
+    // as a notification by Util.spawn.
+    _runCustom(id) {
+        const entry = this._settings.get_value('custom-actions').deepUnpack()
+            .find(([customId]) => customId === id);
+        if (!entry)
+            return;
+
+        try {
+            const [, argv] = GLib.shell_parse_argv(entry[3]);
+            Util.spawn(argv);
+        } catch (e) {
+            logError(e, `[${this.uuid}] Invalid command for ${entry[1]}`);
+            Main.notifyError(_('Could not run “%s”').format(entry[1]), e.message);
         }
     }
 

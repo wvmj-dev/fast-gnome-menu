@@ -9,7 +9,12 @@
     <key name="actions" type="as">
       <default>['lock-screen', 'logout', 'restart', 'power-off']</default>
       <summary>Enabled actions, in display order</summary>
-      <description>Known actions: lock-screen, logout, suspend, switch-user, restart, power-off.</description>
+      <description>Built-in actions: lock-screen, logout, suspend, hibernate, switch-user, restart, power-off. Custom actions use the id from custom-actions.</description>
+    </key>
+    <key name="custom-actions" type="a(ssss)">
+      <default>[]</default>
+      <summary>User-defined actions</summary>
+      <description>Each entry is (id, name, icon name, command line). The id starts with "custom-". The command line is split like a shell would, but runs without a shell.</description>
     </key>
     <key name="layout" type="s">
       <choices>
@@ -35,6 +40,29 @@
       <default>24</default>
       <summary>Corner radius of the buttons in pixels</summary>
     </key>
+    <key name="spacing" type="i">
+      <range min="0" max="64"/>
+      <default>16</default>
+      <summary>Space between buttons in pixels</summary>
+    </key>
+    <key name="icon-size" type="i">
+      <range min="20" max="70"/>
+      <default>34</default>
+      <summary>Icon size as a percentage of the button size</summary>
+    </key>
+    <key name="focus-scale" type="i">
+      <range min="100" max="130"/>
+      <default>110</default>
+      <summary>Size of the selected button as a percentage (100 disables the growth)</summary>
+    </key>
+    <key name="highlight-color" type="s">
+      <default>''</default>
+      <summary>Highlight color as #rrggbb; empty uses the system accent color</summary>
+    </key>
+    <key name="show-panel" type="b">
+      <default>true</default>
+      <summary>Draw the panel behind the buttons</summary>
+    </key>
     <key name="show-labels" type="b">
       <default>true</default>
       <summary>Show the action name below the icon</summary>
@@ -43,6 +71,30 @@
       <range min="0" max="100"/>
       <default>50</default>
       <summary>Opacity of the background dimming (percent)</summary>
+    </key>
+    <key name="monitor" type="s">
+      <choices>
+        <choice value="pointer"/>
+        <choice value="primary"/>
+      </choices>
+      <default>'pointer'</default>
+      <summary>Monitor where the menu opens</summary>
+    </key>
+    <key name="initial-focus" type="s">
+      <choices>
+        <choice value="first"/>
+        <choice value="last"/>
+      </choices>
+      <default>'first'</default>
+      <summary>Action selected when the menu opens: the first one or the last one used</summary>
+    </key>
+    <key name="last-action" type="s">
+      <default>''</default>
+      <summary>Last action run from the menu (internal)</summary>
+    </key>
+    <key name="close-on-click-outside" type="b">
+      <default>true</default>
+      <summary>Close the menu when clicking outside of it</summary>
     </key>
     <key name="confirm-mode" type="s">
       <choices>
@@ -57,6 +109,14 @@
     <key name="confirm-list" type="as">
       <default>['logout', 'restart', 'power-off']</default>
       <summary>Actions that ask for confirmation when confirm-mode is "custom"</summary>
+    </key>
+    <key name="confirm-default" type="s">
+      <choices>
+        <choice value="cancel"/>
+        <choice value="confirm"/>
+      </choices>
+      <default>'cancel'</default>
+      <summary>Button focused when the confirmation opens</summary>
     </key>
     <key name="confirm-timeout" type="i">
       <range min="5" max="300"/>

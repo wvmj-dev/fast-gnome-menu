@@ -21,6 +21,10 @@
   background-color: #46464c;
 }
 
+.fgm-tile {
+  border: 2px solid transparent;
+}
+
 .fgm-button:focus,
 .fgm-tile {
   background-color: -st-accent-color;
