@@ -1,103 +1,110 @@
 # Fast GNOME Menu
 
-Extensão para o GNOME Shell que abre um menu de energia interativo, no estilo do [wlogout](https://github.com/ArtsyMacaw/wlogout): botões com cantos arredondados para bloquear a tela, sair da sessão, suspender, hibernar, trocar de usuário, reiniciar, desligar ou rodar comandos seus.
+A GNOME Shell extension that opens an interactive power menu in the style of [wlogout](https://github.com/ArtsyMacaw/wlogout): rounded buttons to lock the screen, log out, suspend, hibernate, switch user, restart, power off or run your own commands.
 
-O menu é usado pelo teclado (setas ou teclas de atalho) ou pelo mouse, pode ficar no centro, numa borda ou num canto da tela, e segue o tema claro/escuro, a cor de destaque e o idioma do sistema.
+Use it with the keyboard (arrow keys or shortcut keys) or the mouse. Place it at the center, an edge or a corner of the screen. It follows the system light/dark style, accent color and language.
 
-| Menu padrão | Confirmação | Circunferência com desfoque |
+| Default menu | Confirmation | Circle with blur |
 |---|---|---|
-| ![Menu com quatro botões, Sair selecionado](docs/screenshots/menu.png) | ![Confirmação com contagem regressiva](docs/screenshots/confirmation.png) | ![Botões em círculo sobre a tela desfocada](docs/screenshots/circle-blur.png) |
+| ![Menu with four buttons, Log Out selected](docs/screenshots/menu.png) | ![Confirmation with a countdown](docs/screenshots/confirmation.png) | ![Buttons on a ring over the blurred screen](docs/screenshots/circle-blur.png) |
 
-| Tema claro, 5 ações | Disposição personalizada | Preferências |
+| Light style, 5 actions | Custom layout | Preferences |
 |---|---|---|
-| ![Menu claro no padrão da face de um dado](docs/screenshots/light.png) | ![Botões desenhados em forma de T](docs/screenshots/custom-layout.png) | ![Aba Aparência das preferências](docs/screenshots/preferences.png) |
+| ![Light menu in the die-face layout](docs/screenshots/light.png) | ![Buttons drawn as a T shape](docs/screenshots/custom-layout.png) | ![Appearance page of the preferences](docs/screenshots/preferences.png) |
 
-As capturas são geradas pelo [teste automático](#teste-automático-buildsh-test).
+The screenshots are taken by the [smoke test](#smoke-test-buildsh-test). The UI in them is in Brazilian Portuguese, one of the bundled translations.
 
-## Sumário
+## Contents
 
-- [Recursos](#recursos)
-- [Pré-requisitos](#pré-requisitos)
-- [Instalação](#instalação)
-- [Como usar](#como-usar)
-- [Configurações](#configurações)
-- [Como funciona](#como-funciona)
-- [Estrutura do projeto](#estrutura-do-projeto)
-- [Compilação e empacotamento](#compilação-e-empacotamento)
-- [Testes](#testes)
-- [Desenvolvimento e depuração](#desenvolvimento-e-depuração)
-- [Traduções](#traduções)
-- [Estado do projeto](#estado-do-projeto)
-- [Ideias para o futuro](#ideias-para-o-futuro)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Settings](#settings)
+- [How it works](#how-it-works)
+- [Project layout](#project-layout)
+- [Building and packaging](#building-and-packaging)
+- [Tests](#tests)
+- [Development and debugging](#development-and-debugging)
+- [Translations](#translations)
+- [Project status](#project-status)
+- [Ideas for later](#ideas-for-later)
 
-## Recursos
+## Features
 
-- **Ações nativas:** Bloquear, Sair, Suspender, Hibernar, Trocar usuário, Reiniciar e Desligar. As quatro ativadas por padrão são Bloquear, Sair, Reiniciar e Desligar.
-- **Ações personalizadas:** qualquer comando, com nome e ícone próprios (abrir um terminal, desligar o monitor, reiniciar no firmware…). O comando roda **sem shell**, então não há injeção de comandos.
-- **Disposições:**
-  - **Automática:** 1 a 3 em linha, 4 em 2×2, 5 como a face de um dado, 6 em 2×3;
-  - **Grade** com número fixo de colunas, **Linha** e **Coluna**;
-  - **Circunferência** e **Círculo com centro**, com painel redondo;
-  - **Personalizada**, desenhada clicando numa grade 7×7 nas preferências.
-- **Posição:** centro, as quatro bordas ou os quatro cantos, com distância da borda ajustável. Se o menu não couber na tela, ele encolhe para caber.
-- **Fundo:** escurecimento e desfoque da tela atrás do menu; painel sólido, translúcido (vidro fosco, junto com o desfoque) ou invisível.
-- **Destaque:** o botão selecionado usa a cor de destaque do sistema, ou uma cor sua, e cresce com uma animação suave.
-- **Confirmação opcional** para nenhuma ação, todas ou só as escolhidas, com:
-  - o botão da ação;
-  - uma contagem regressiva (60 s por padrão) com barra de progresso;
-  - os botões Cancelar e Confirmar, com Cancelar focado por padrão.
-- **Tema e idioma:** folhas de estilo para os temas claro e escuro, trocadas automaticamente; traduções para português do Brasil e espanhol.
-- **HiDPI:** funciona com escala de interface 2× e maiores.
-- **Leve:** nada roda em segundo plano. O menu é montado só quando abre e destruído quando fecha.
-- **Preferências em três abas:** Ações, Aparência e Comportamento.
+- **Built-in actions:**
+  - Lock, Log Out, Suspend, Hibernate, Switch User, Restart and Power Off;
+  - Lock, Log Out, Restart and Power Off are enabled by default.
+- **Custom actions:** any command, with its own name and icon (open a terminal, turn the screen off, reboot into firmware…). The command runs **without a shell**, so there is no command injection.
+- **Layouts:**
+  - **Automatic:** 1 to 3 in a row, 4 as 2×2, 5 like a die face, 6 as 2×3;
+  - **Grid** with a fixed number of columns, **Row** and **Column**;
+  - **Circle** and **Circle with center**, with a round panel;
+  - **Custom**, drawn by clicking cells on a 7×7 grid in the preferences.
+- **Position:**
+  - center, one of the four edges or one of the four corners;
+  - adjustable distance from the edge;
+  - a menu that does not fit the screen shrinks to fit.
+- **Background:**
+  - dimming and blur of the screen behind the menu;
+  - a solid, translucent (frosted glass when combined with blur) or invisible panel.
+- **Highlight:** the selected button uses the system accent color, or a color of your choice, and grows with a smooth animation.
+- **Optional confirmation** for no action, every action or the chosen ones:
+  - shows the action's button;
+  - a countdown (60 s by default) with a progress bar;
+  - Cancel and Confirm buttons, with Cancel focused by default.
+- **Style and language:** stylesheets for the light and dark styles, switched automatically; translations for Brazilian Portuguese and Spanish.
+- **HiDPI:** works with interface scale 2× and up.
+- **Lightweight:** nothing runs in the background. The menu is built when it opens and destroyed when it closes.
+- **Preferences in three pages:** Actions, Appearance and Behavior.
 
-## Pré-requisitos
+## Requirements
 
-### Para usar e compilar
+### To use and build
 
-| Pacote (Fedora) | Versão | Fornece | Para quê |
+| Package (Fedora) | Version | Provides | Used for |
 |---|---|---|---|
-| `gnome-shell` | 48, 49 ou 50 | GNOME Shell e o comando `gnome-extensions` | Rodar a extensão, ativá-la e gerar o `.zip` |
-| `gjs` | a que acompanha o GNOME | Interpretador JavaScript do GNOME | Rodar a extensão, as preferências e os testes unitários |
-| `glib2` | qualquer recente | `glib-compile-schemas` | Compilar o schema de configurações |
-| `gettext` | qualquer recente | `msgfmt`, `xgettext`, `msgmerge` | Compilar e atualizar as traduções |
+| `gnome-shell` | 48, 49 or 50 | GNOME Shell and the `gnome-extensions` command | Running, enabling and packing the extension |
+| `gjs` | the one shipped with GNOME | GNOME's JavaScript interpreter | Running the extension, the preferences and the unit tests |
+| `glib2` | any recent | `glib-compile-schemas` | Compiling the settings schema |
+| `gettext` | any recent | `msgfmt`, `xgettext`, `msgmerge` | Compiling and updating translations |
 
-`gnome-shell` e `gjs` já vêm com qualquer instalação do GNOME. Os scripts precisam do `bash`.
+`gnome-shell` and `gjs` come with any GNOME installation. The scripts need `bash`.
 
-### Para testar e desenvolver
+### To test and develop
 
-| Pacote (Fedora) | Fornece | Usado por |
+| Package (Fedora) | Provides | Used by |
 |---|---|---|
-| `dbus-daemon` | `dbus-run-session` | `./build.sh test` e `./build.sh dev`: dão ao GNOME Shell de teste um barramento D-Bus próprio |
-| `dbus-tools` | `dbus-update-activation-environment` | `./build.sh test`: escolhe a aba das preferências nas capturas |
-| `mutter-devkit` | janela que hospeda a sessão aninhada | `./build.sh dev` (GNOME 49+). No GNOME 48, a sessão usa `--nested` e não precisa dele |
+| `dbus-daemon` | `dbus-run-session` | `./build.sh test` and `./build.sh dev`, which give the test GNOME Shell its own D-Bus bus |
+| `dbus-tools` | `dbus-update-activation-environment` | `./build.sh test`, to pick the preferences page in screenshots |
+| `mutter-devkit` | the window that hosts the nested session | `./build.sh dev` (GNOME 49+). GNOME 48 uses `--nested` and does not need it |
 
-O Fedora não instala o `dbus-daemon` por padrão porque usa o `dbus-broker` no sistema. Os dois convivem sem problema: o `dbus-daemon` só roda quando o `dbus-run-session` o chama.
+Fedora does not install `dbus-daemon` by default because it uses `dbus-broker` as the system bus. Both can be installed side by side: `dbus-daemon` only runs when `dbus-run-session` starts it.
 
-### Resumo por comando
+### Summary by command
 
-| Comando | Precisa de |
+| Command | Needs |
 |---|---|
 | `./build.sh`, `install`, `stage`, `pack`, `pot`, `prefs` | `gnome-shell`, `gjs`, `glib2`, `gettext` |
 | `./build.sh unit` | `gjs` |
-| `./build.sh test` | os do primeiro item, mais `dbus-daemon` e `dbus-tools` |
-| `./build.sh dev` | os do primeiro item, mais `dbus-daemon` e `mutter-devkit` |
+| `./build.sh test` | the first row, plus `dbus-daemon` and `dbus-tools` |
+| `./build.sh dev` | the first row, plus `dbus-daemon` and `mutter-devkit` |
 
-No Fedora, tudo de uma vez:
+On Fedora, everything at once:
 
 ```sh
 sudo dnf install gnome-shell gjs glib2 gettext dbus-daemon dbus-tools mutter-devkit
 ```
 
-No Debian/Ubuntu, para usar, compilar e rodar os testes unitários (os nomes dos pacotes da sessão aninhada variam entre versões):
+On Debian/Ubuntu, to use, build and run the unit tests (package names for the nested session vary between releases):
 
 ```sh
 sudo apt install gnome-shell gjs libglib2.0-bin gettext
 ```
 
-## Instalação
+## Installation
 
-### A partir do código-fonte
+### From source
 
 ```sh
 git clone https://github.com/wvmj-dev/fast-gnome-menu.git
@@ -105,132 +112,131 @@ cd fast-gnome-menu
 ./build.sh install
 ```
 
-O comando compila o schema e as traduções e copia a extensão para `~/.local/share/gnome-shell/extensions/fast-gnome-menu@wvmj-dev.github.io`.
+This compiles the schema and translations and copies the extension to `~/.local/share/gnome-shell/extensions/fast-gnome-menu@wvmj-dev.github.io`.
 
-Depois disso:
+Then:
 
-1. **Saia e entre de novo na sessão.** No Wayland, o GNOME Shell só carrega extensões novas, ou o código novo de uma extensão, num novo login.
-2. Ative a extensão:
+1. **Log out and back in.** On Wayland, GNOME Shell only loads new extensions, or new code of an extension, on a new login.
+2. Enable the extension, either from the **Extensions** app or with:
 
    ```sh
    gnome-extensions enable fast-gnome-menu@wvmj-dev.github.io
    ```
 
-   Ou use o aplicativo **Extensões**.
-
-### A partir do `.zip`
+### From the `.zip`
 
 ```sh
 ./build.sh pack
 gnome-extensions install --force fast-gnome-menu@wvmj-dev.github.io.shell-extension.zip
 ```
 
-Em seguida, siga os passos 1 e 2 acima.
+Then follow steps 1 and 2 above.
 
-### Desinstalação
+### Uninstalling
 
 ```sh
 gnome-extensions uninstall fast-gnome-menu@wvmj-dev.github.io
 ```
 
-## Como usar
+## Usage
 
-Abra o menu com **`Super+X`** (atalho padrão) ou pelo ícone de energia na barra superior, com clique, toque ou `Enter` na navegação por teclado da barra.
+Open the menu with **`Super+X`** (default shortcut) or with the power icon in the top bar, using a click, a tap or `Enter` while navigating the bar with the keyboard.
 
-| Tecla | Efeito |
+| Key | Effect |
 |---|---|
-| `←` `→` `↑` `↓` | Vai para o botão vizinho naquela direção. No fim de uma linha ou coluna, volta para o outro extremo |
-| `Tab` / `Shift+Tab` | Próximo / anterior, na ordem das ações |
-| `Enter` / `Espaço` | Executa a ação selecionada (ou abre a confirmação dela) |
-| `1` … `9` | Executa a ação naquela posição (ou abre a confirmação dela) |
-| Letra da ação | Executa a ação diretamente (tabela abaixo), ou abre a confirmação dela |
-| `Esc`, o atalho de abrir ou clique fora do painel | Fecha o menu (o clique fora pode ser desligado) |
+| `←` `→` `↑` `↓` | Moves to the neighbouring button in that direction. At the end of a row or column, wraps to the other end |
+| `Tab` / `Shift+Tab` | Next / previous, in action order |
+| `Enter` / `Space` | Runs the selected action (or opens its confirmation) |
+| `1` … `9` | Runs the action at that position (or opens its confirmation) |
+| Action letter | Runs that action directly (table below), or opens its confirmation |
+| `Esc`, the opening shortcut or a click outside the panel | Closes the menu (closing on outside clicks can be turned off) |
 
-| Ação | Letra | Ícone |
+| Action | Letter | Icon |
 |---|---|---|
-| Bloquear | `L` | `system-lock-screen-symbolic` |
-| Sair | `E` | `system-log-out-symbolic` |
-| Suspender | `S` | `weather-clear-night-symbolic` |
-| Hibernar | `H` | `drive-harddisk-symbolic` |
-| Trocar usuário | `U` | `system-switch-user-symbolic` |
-| Reiniciar | `R` | `system-reboot-symbolic` |
-| Desligar | `P` | `system-shutdown-symbolic` |
+| Lock | `L` | `system-lock-screen-symbolic` |
+| Log Out | `E` | `system-log-out-symbolic` |
+| Suspend | `S` | `weather-clear-night-symbolic` |
+| Hibernate | `H` | `drive-harddisk-symbolic` |
+| Switch User | `U` | `system-switch-user-symbolic` |
+| Restart | `R` | `system-reboot-symbolic` |
+| Power Off | `P` | `system-shutdown-symbolic` |
 
-As letras são fixas, para não mudarem quando o idioma do sistema muda, e não aparecem nos botões. Ações personalizadas não têm letra, mas podem ser acionadas pelo número da posição. Passar o mouse sobre um botão também o seleciona.
+- **Letters:** they are fixed, so they do not change with the system language, and they are not shown on the buttons.
+- **Custom actions:** they have no letter, but can be triggered by their position number.
+- **Mouse:** hovering a button also selects it.
+- **Unavailable actions:** an action the system does not allow right now (for example, locking disabled by policy, or hibernate without swap) is dimmed, and the selection skips it.
 
-Uma ação que o sistema não permite no momento (por exemplo, bloquear a tela desativado por política, ou hibernar sem swap) aparece esmaecida, e a seleção pula por cima dela.
+### On the confirmation screen
 
-### Na tela de confirmação
-
-| Tecla | Efeito |
+| Key | Effect |
 |---|---|
-| `Enter` / `Espaço` | Aciona o botão em foco. Ao abrir, o foco está em Cancelar (configurável), para que um `Enter` a mais não execute a ação |
-| `←` `→` / `Tab` | Alterna entre Cancelar e Confirmar |
-| `Esc` ou clique fora do painel | Cancela e volta ao menu, com a mesma ação selecionada |
+| `Enter` / `Space` | Activates the focused button. Cancel is focused when it opens (configurable), so a stray `Enter` does not run the action |
+| `←` `→` / `Tab` | Switches between Cancel and Confirm |
+| `Esc` or a click outside the panel | Cancels and returns to the menu, with the same action selected |
 
-Quando a contagem chega a zero, a ação é executada sozinha, como na janela de desligamento do GNOME.
+When the countdown reaches zero, the action runs on its own, like GNOME's power-off dialog.
 
-## Configurações
+## Settings
 
-Abra as preferências pelo aplicativo **Extensões** ou com:
+Open the preferences from the **Extensions** app or with:
 
 ```sh
 gnome-extensions prefs fast-gnome-menu@wvmj-dev.github.io
 ```
 
-As alterações valem a partir da próxima vez que o menu for aberto.
+Changes apply the next time the menu opens.
 
-**Aba Ações**
-- quais ações aparecem e em que ordem;
-- ações personalizadas: adicionar, editar e excluir.
+**Actions page**
+- which actions appear, and in which order;
+- custom actions: add, edit and delete.
 
-**Aba Aparência**
-- disposição, colunas da grade e desenho da disposição personalizada;
-- posição e distância da borda;
-- tamanho dos botões, cantos, espaçamento, tamanho do ícone e quanto o botão selecionado cresce;
-- rótulos e cor de destaque própria;
-- estilo do painel, escurecimento e desfoque da tela.
+**Appearance page**
+- layout, grid columns and the custom layout drawing;
+- position and distance from the edge;
+- button size, corners, spacing, icon size and how much the selected button grows;
+- labels and a custom highlight color;
+- panel style, screen dimming and screen blur.
 
-**Aba Comportamento**
-- atalho e ícone na barra;
-- monitor onde abrir;
-- ação selecionada ao abrir;
-- fechar ao clicar fora;
-- confirmação: quais ações, duração da contagem e botão focado;
-- restaurar todos os padrões.
+**Behavior page**
+- shortcut and top bar icon;
+- monitor to open on;
+- action selected on opening;
+- closing on outside clicks;
+- confirmation: which actions, countdown length and focused button;
+- resetting everything to defaults.
 
-| Chave GSettings | Tipo | Padrão | Descrição |
+| GSettings key | Type | Default | Description |
 |---|---|---|---|
-| `actions` | `as` | `['lock-screen', 'logout', 'restart', 'power-off']` | Ações exibidas, na ordem |
-| `custom-actions` | `a(ssss)` | `[]` | Ações personalizadas: `(id, nome, ícone, comando)`. O id começa com `custom-` |
-| `layout` | `s` | `'auto'` | `'auto'`, `'grid'`, `'row'`, `'column'`, `'circle'`, `'circle-center'` ou `'custom'` |
-| `columns` | `i` (1–6) | `4` | Botões por linha, na grade |
-| `custom-layout` | `as` | `['x.x', '.x.', 'x.x']` | Desenho da disposição personalizada: uma string por linha, cada `x` é uma posição |
-| `position` | `s` | `'center'` | `'center'`, `'top'`, `'bottom'`, `'left'`, `'right'`, `'top-left'`, `'top-right'`, `'bottom-left'` ou `'bottom-right'` |
-| `position-margin` | `i` (0–400) | `32` | Distância da borda, em pixels, fora do centro |
-| `button-size` | `i` (64–256) | `128` | Tamanho dos botões, em pixels |
-| `corner-radius` | `i` (0–64) | `24` | Raio dos cantos, em pixels (metade do tamanho deixa o botão redondo) |
-| `spacing` | `i` (0–64) | `16` | Espaço entre os botões, em pixels |
-| `icon-size` | `i` (20–70) | `34` | Tamanho do ícone, em % do botão |
-| `focus-scale` | `i` (100–130) | `110` | Tamanho do botão selecionado, em %; `100` desliga o aumento |
-| `show-labels` | `b` | `true` | Mostra o nome da ação sob o ícone |
-| `highlight-color` | `s` | `''` | Cor de destaque `#rrggbb`; vazio usa a cor de destaque do sistema |
-| `panel-style` | `s` | `'solid'` | `'solid'`, `'translucent'` ou `'none'` (os botões flutuam; a confirmação continua com fundo) |
-| `backdrop-opacity` | `i` (0–100) | `50` | Escurecimento da tela, em % |
-| `backdrop-blur` | `i` (0–60) | `0` | Raio do desfoque da tela; `0` desliga |
-| `toggle-menu` | `as` | `['<Super>x']` | Atalho que abre/fecha o menu |
-| `show-indicator` | `b` | `true` | Mostra o ícone na barra superior |
-| `monitor` | `s` | `'pointer'` | `'pointer'` (monitor do ponteiro) ou `'primary'` (monitor principal) |
-| `initial-focus` | `s` | `'first'` | Ação selecionada ao abrir: `'first'` ou `'last'` (a última usada, guardada em `last-action`) |
-| `close-on-click-outside` | `b` | `true` | Fecha o menu ao clicar fora do painel |
-| `confirm-mode` | `s` | `'none'` | Quais ações pedem confirmação: `'none'`, `'all'` ou `'custom'` (as de `confirm-list`) |
-| `confirm-list` | `as` | `['logout', 'restart', 'power-off']` | Ações que pedem confirmação no modo `'custom'` |
-| `confirm-timeout` | `i` (5–300) | `60` | Segundos até a confirmação executar a ação sozinha |
-| `confirm-default` | `s` | `'cancel'` | Botão focado ao abrir a confirmação: `'cancel'` ou `'confirm'` |
+| `actions` | `as` | `['lock-screen', 'logout', 'restart', 'power-off']` | Actions shown, in order |
+| `custom-actions` | `a(ssss)` | `[]` | Custom actions: `(id, name, icon, command)`. The id starts with `custom-` |
+| `layout` | `s` | `'auto'` | `'auto'`, `'grid'`, `'row'`, `'column'`, `'circle'`, `'circle-center'` or `'custom'` |
+| `columns` | `i` (1–6) | `4` | Buttons per row in the grid layout |
+| `custom-layout` | `as` | `['x.x', '.x.', 'x.x']` | Drawing of the custom layout: one string per row, each `x` is a position |
+| `position` | `s` | `'center'` | `'center'`, `'top'`, `'bottom'`, `'left'`, `'right'`, `'top-left'`, `'top-right'`, `'bottom-left'` or `'bottom-right'` |
+| `position-margin` | `i` (0–400) | `32` | Distance from the edge in pixels when not centered |
+| `button-size` | `i` (64–256) | `128` | Button size in pixels |
+| `corner-radius` | `i` (0–64) | `24` | Corner radius in pixels (half the size makes round buttons) |
+| `spacing` | `i` (0–64) | `16` | Space between buttons in pixels |
+| `icon-size` | `i` (20–70) | `34` | Icon size as a percentage of the button |
+| `focus-scale` | `i` (100–130) | `110` | Size of the selected button in percent; `100` turns the growth off |
+| `show-labels` | `b` | `true` | Shows the action name below the icon |
+| `highlight-color` | `s` | `''` | Highlight color as `#rrggbb`; empty uses the system accent color |
+| `panel-style` | `s` | `'solid'` | `'solid'`, `'translucent'` or `'none'` (buttons float; the confirmation keeps a background) |
+| `backdrop-opacity` | `i` (0–100) | `50` | Screen dimming in percent |
+| `backdrop-blur` | `i` (0–60) | `0` | Screen blur radius; `0` turns it off |
+| `toggle-menu` | `as` | `['<Super>x']` | Shortcut that opens/closes the menu |
+| `show-indicator` | `b` | `true` | Shows the icon in the top bar |
+| `monitor` | `s` | `'pointer'` | `'pointer'` (monitor with the pointer) or `'primary'` |
+| `initial-focus` | `s` | `'first'` | Action selected on opening: `'first'` or `'last'` (the last one used, stored in `last-action`) |
+| `close-on-click-outside` | `b` | `true` | Closes the menu on clicks outside the panel |
+| `confirm-mode` | `s` | `'none'` | Which actions ask for confirmation: `'none'`, `'all'` or `'custom'` (those in `confirm-list`) |
+| `confirm-list` | `as` | `['logout', 'restart', 'power-off']` | Actions that ask for confirmation in `'custom'` mode |
+| `confirm-timeout` | `i` (5–300) | `60` | Seconds before the confirmation runs the action on its own |
+| `confirm-default` | `s` | `'cancel'` | Button focused when the confirmation opens: `'cancel'` or `'confirm'` |
 
-Identificadores das ações nativas: `lock-screen`, `logout`, `suspend`, `hibernate`, `switch-user`, `restart` e `power-off`.
+Built-in action ids: `lock-screen`, `logout`, `suspend`, `hibernate`, `switch-user`, `restart` and `power-off`.
 
-As chaves também podem ser alteradas pelo terminal:
+The keys can also be changed from a terminal:
 
 ```sh
 SCHEMA=org.gnome.shell.extensions.fast-gnome-menu
@@ -240,348 +246,353 @@ gsettings --schemadir "$DIR" set $SCHEMA layout "'circle'"
 gsettings --schemadir "$DIR" set $SCHEMA custom-actions "[('custom-term', 'Terminal', 'utilities-terminal-symbolic', 'gnome-terminal')]"
 ```
 
-## Como funciona
+## How it works
 
-### Abertura do menu
+### Opening the menu
 
-O atalho é registrado com `Main.wm.addKeybinding` e funciona na área de trabalho e no Panorama. Ele também funciona com o menu aberto, para poder fechá-lo, mas não abre o menu por cima de outro diálogo do sistema.
+The shortcut is registered with `Main.wm.addKeybinding` and works on the desktop and in the Overview. It also works while the menu is open, to close it, but never opens the menu on top of another system dialog.
 
-Ao abrir, a extensão:
+When the menu opens, the extension:
 
-1. cria uma camada do tamanho da tela inteira (`PowerMenu`), que escurece e, se configurado, desfoca o fundo, e recebe os cliques fora do painel;
-2. calcula as posições dos botões pela disposição e, se o conjunto não couber na área útil do monitor, reduz tamanho, espaçamento e cantos;
-3. posiciona o painel no monitor escolhido, conforme `position`;
-4. chama `Main.pushModal`, que captura teclado e mouse até o menu fechar;
-5. seleciona a primeira ação disponível (ou a última usada) e anima a entrada.
+1. creates a full-screen layer (`PowerMenu`) that dims, and optionally blurs, the background and receives clicks outside the panel;
+2. computes the button positions for the layout and, if they do not fit the monitor's work area, scales down size, spacing and corners;
+3. places the panel on the chosen monitor according to `position`;
+4. calls `Main.pushModal`, which grabs keyboard and mouse until the menu closes;
+5. selects the first available action (or the last one used) and animates in.
 
-### Disposição dos botões
+### Button layout
 
-As posições são calculadas por `getCells()` em [layout.js](layout.js), em unidades de "um botão mais o espaçamento", e depois convertidas em pixels.
+Positions are computed by `getCells()` in [layout.js](layout.js), in units of "one button plus the spacing", and then converted to pixels.
 
-**Automática** (`'auto'`, padrão):
+**Automatic** (`'auto'`, the default):
 
-| Ações | Disposição |
+| Actions | Layout |
 |---|---|
-| 1 | Só o botão |
-| 2 ou 3 | Uma linha |
-| 4 | Quadrado 2×2 |
-| 5 | Como o de 4, com um no meio (face 5 de um dado ⚄) |
-| 6 | Duas linhas de três (2×3) |
-| 7 ou mais | Linhas de até ⌈√(1,5·n)⌉ botões, com a última linha centralizada |
+| 1 | Just the button |
+| 2 or 3 | One row |
+| 4 | 2×2 square |
+| 5 | Like 4, with one in the middle (die face ⚄) |
+| 6 | Two rows of three (2×3) |
+| 7 or more | Rows of up to ⌈√(1.5·n)⌉ buttons, with the last row centered |
 
 ```
-1        2 ou 3        4          5              6
+1        2 or 3        4          5              6
 
 [■]      [■][■][■]     [■][■]     [■]    [■]     [■][■][■]
                        [■][■]        [■]         [■][■][■]
                                   [■]    [■]
 ```
 
-No padrão de 5, os espaços no meio de cada lado ficam vazios: para que o botão do centro não se sobreponha aos cantos, eles precisam estar uma posição inteira afastados.
+In the 5-button layout, the middle of each side stays empty: the center button can only avoid overlapping the corners if they are a whole position away.
 
-**Grade** (`'grid'`): linhas de `columns` botões; uma última linha mais curta fica centralizada. **Linha** e **Coluna** são grades com todos os botões numa só linha ou coluna.
+**Grid** (`'grid'`): rows of `columns` buttons; a shorter last row is centered. **Row** and **Column** are grids with every button in a single row or column.
 
-**Circunferência** (`'circle'`): os botões ficam num anel, o primeiro no topo, em sentido horário. Dois botões quadrados vizinhos só não se sobrepõem a pelo menos √2 posições de distância, então o raio do anel é `√2/2 ÷ sen(π/n)` posições, com `n` botões.
+**Circle** (`'circle'`): buttons sit on a ring, the first at the top, clockwise. Two neighbouring square buttons only stay clear of each other at least √2 positions apart, so the ring radius is `√2/2 ÷ sin(π/n)` positions for `n` buttons.
 
-**Círculo com centro** (`'circle-center'`): a primeira ação fica no meio e as demais no anel, com raio de pelo menos √2 para não encostar nos cantos do botão central. Nas duas disposições circulares, o painel é um círculo que alcança o canto mais distante de cada botão.
+**Circle with center** (`'circle-center'`): the first action sits in the middle and the rest on the ring, whose radius is at least √2 to clear the corners of the center button. In both circular layouts, the panel is a circle that reaches the farthest corner of every button.
 
-**Personalizada** (`'custom'`): cada `x` de `custom-layout` é uma posição, preenchida na ordem de leitura. Se houver mais ações do que posições, as que sobram continuam em linhas abaixo do desenho, com a largura dele.
+**Custom** (`'custom'`): each `x` in `custom-layout` is a position, filled in reading order. If there are more actions than positions, the rest continue in rows below the drawing, as wide as the drawing.
 
-### Posição, tamanho e escala
+### Position, size and scale
 
-- **Área útil:** o menu fica dentro da área útil do monitor (`getWorkAreaForMonitor`), que exclui a barra superior.
-- **Margem:** a distância da borda é aplicada como margem CSS. Margens definidas direto no ator seriam apagadas pelo St quando ele recalcula o estilo.
-- **Confirmação:** abre na mesma posição do menu.
-- **Encaixe:** se o painel não couber na área útil (botões grandes, monitor pequeno ou escalado), tamanho, espaçamento e cantos são reduzidos na mesma proporção **antes** de montar os botões.
-- **Escala HiDPI:** o St multiplica as medidas em `px` do CSS pela escala da interface (`St.ThemeContext.scale_factor`), mas não os tamanhos e posições definidos por código. Por isso a geometria calculada em JavaScript é multiplicada pela escala, e o CSS fica em pixels lógicos.
+- **Work area:** the menu stays inside the monitor's work area (`getWorkAreaForMonitor`), which leaves out the top bar.
+- **Margin:** the distance from the edge is applied as a CSS margin. Margins set on the actor directly would be reset by St when it recomputes the style.
+- **Confirmation:** opens at the same position as the menu.
+- **Fitting:** if the panel does not fit the work area (large buttons, small or scaled monitor), size, spacing and corners are scaled down by the same factor **before** the buttons are built.
+- **HiDPI:** St multiplies CSS `px` lengths by the interface scale (`St.ThemeContext.scale_factor`), but not sizes and positions set from code. So the geometry computed in JavaScript is multiplied by the scale, and the CSS stays in logical pixels.
 
-### Navegação pelas setas
+### Arrow-key navigation
 
-A navegação fica em `pickNeighbour()`, em [layout.js](layout.js), e usa a posição real de cada botão, por isso funciona em qualquer disposição. Entre os botões à frente na direção pressionada, ela escolhe o de menor `distância / √cos(ângulo)`:
+Navigation lives in `pickNeighbour()` in [layout.js](layout.js). It uses each button's actual position, so it works with any layout. Among the buttons ahead in the pressed direction, it picks the one with the smallest `distance / √cos(angle)`:
 
-- **Grade:** o vizinho em linha reta sempre ganha do diagonal.
-- **Padrão de 5:** o botão do meio, na diagonal mas bem mais perto, ganha dos cantos. De um canto, `→` ou `↓` vai para o meio; do meio, a mesma seta continua para o canto do lado de onde você veio.
-- **Botões desativados:** são pulados na mesma direção, como se fossem um espaço vazio. Assim eles não mudam o caminho.
-- **Sem botão na direção:** a seleção volta para o outro extremo da mesma linha ou coluna.
+- **Grids:** a straight neighbour always beats a diagonal one.
+- **5-button layout:** the middle button, diagonal but much closer, beats the corners. From a corner, `→` or `↓` goes to the middle; from the middle, the same arrow continues to the corner on the side you came from.
+- **Disabled buttons:** skipped in the same direction, like an empty slot, so they do not change the route.
+- **Nothing ahead:** the selection wraps to the far end of the same row or column.
 
-### Destaque e tema
+### Highlight and style
 
-- **Foco:** o destaque usa o estado `:focus` do St. Passar o mouse sobre um botão também lhe dá o foco, então teclado e mouse compartilham o mesmo destaque.
-- **Aparência do destaque:** o botão destacado recebe a cor de destaque e uma borda mais forte. Ele cresce até `focus-scale` com `ease()` (`EASE_OUT_BACK`, 200 ms) e fica por cima dos vizinhos.
-- **Sem sombra:** no St, `box-shadow` com desfoque não acompanha os cantos arredondados e aparece como um quadrado borrado.
-- **Temas:** as cores vêm de `stylesheet-dark.css` e `stylesheet-light.css`. O GNOME Shell carrega a variante do estilo atual e a recarrega quando ele muda. `stylesheet.css` é uma cópia da escura, usada se a variante não for encontrada.
-- **Cor de destaque:** por padrão usa `-st-accent-color`. Com `highlight-color`, a cor é aplicada por estilo inline e o texto fica preto ou branco conforme a luminância. O valor só chega ao CSS se for exatamente `#rrggbb` ([color.js](color.js)), o que impede injetar CSS pela configuração.
-- **Animações:** respeitam a opção global "Animações" do GNOME. Desligada, elas são instantâneas.
+- **Focus:** the highlight uses St's `:focus` state. Hovering a button also gives it the focus, so keyboard and mouse share one highlight.
+- **Highlighted button:** gets the accent color and a stronger border. It grows to `focus-scale` with `ease()` (`EASE_OUT_BACK`, 200 ms) and is raised above its neighbours.
+- **No shadow:** in St, a blurred `box-shadow` does not follow rounded corners and shows up as a blurry square.
+- **Styles:** colors come from `stylesheet-dark.css` and `stylesheet-light.css`. GNOME Shell loads the variant for the current style and reloads it when the style changes. `stylesheet.css` is a copy of the dark one, used if the variant is missing.
+- **Highlight color:** `-st-accent-color` by default. With `highlight-color` set, the color is applied as an inline style, and the text turns black or white depending on luminance. The value only reaches CSS if it is exactly `#rrggbb` ([color.js](color.js)), so the setting cannot inject CSS.
+- **Animations:** they follow GNOME's global Animations setting. With it off, they are instant.
 
-### Fundo
+### Background
 
-- **Desfoque:** usa `Shell.BlurEffect` no modo `BACKGROUND` na camada que cobre a tela, que desfoca o que está atrás enquanto o menu continua nítido. O escurecimento é desenhado por cima.
-- **Custo:** o desfoque só existe enquanto o menu está aberto, mas o custo de GPU cresce com o raio, por isso vem desligado.
-- **Sem desfoque só no painel:** o efeito do GNOME é retangular e apareceria como um quadrado borrado fora dos cantos arredondados. Painel translúcido mais desfoque da tela dá o mesmo resultado de vidro fosco.
+- **Blur:** uses `Shell.BlurEffect` in `BACKGROUND` mode on the full-screen layer. It blurs what is behind while the menu stays sharp, and the dimming is drawn on top.
+- **Cost:** blur only exists while the menu is open, but its GPU cost grows with the radius, so it is off by default.
+- **No panel-only blur:** GNOME's blur is rectangular and would show a blurry square outside the rounded corners. A translucent panel over a blurred screen gives the same frosted-glass look.
 
-### Confirmação
+### Confirmation
 
-Se a ação pede confirmação (`confirm-mode` e `confirm-list`), o menu não fecha:
+If the action asks for confirmation (`confirm-mode` and `confirm-list`), the menu stays open:
 
-1. o painel de botões some, e uma camada preta extra escurece mais o fundo;
-2. aparece um painel com:
-   - o botão da ação, 25% maior;
-   - o texto da contagem;
-   - uma barra de progresso que esvazia de forma contínua;
-   - os botões Cancelar e Confirmar;
-3. ao chegar a zero, ou ao clicar em Confirmar, a ação é executada;
-4. Cancelar, `Esc` ou um clique fora interrompem a contagem e trazem o menu de volta.
+1. the button panel fades out, and an extra black layer dims the background further;
+2. a panel appears with:
+   - the action's button, 25% larger;
+   - the countdown text;
+   - a progress bar that empties continuously;
+   - Cancel and Confirm buttons;
+3. when the countdown reaches zero, or on Confirm, the action runs;
+4. Cancel, `Esc` or a click outside stop the countdown and bring the menu back.
 
-Só pode existir uma confirmação por vez. Enquanto ela está aberta, o menu que some não aceita cliques nem rouba o foco.
+Only one confirmation can exist at a time. While it is shown, the fading menu ignores clicks and does not take the focus.
 
-### Execução das ações
+### Running actions
 
-O menu fecha (sem animação) antes de executar a ação, para não ficar por cima da tela de bloqueio ou dos diálogos do sistema.
+The menu closes (without animation) before running the action, so it does not cover the lock screen or system dialogs.
 
-| Ação | Chamada |
+| Action | Call |
 |---|---|
-| Bloquear | `SystemActions.activateLockScreen()` |
-| Sair | `org.gnome.SessionManager.Logout(1)` (sem a janela do GNOME) |
-| Suspender | `SystemActions.activateSuspend()` |
-| Hibernar | `org.freedesktop.login1.Manager.Hibernate(true)` |
-| Trocar usuário | `SystemActions.activateSwitchUser()` |
-| Reiniciar | `org.freedesktop.login1.Manager.Reboot(true)` |
-| Desligar | `org.freedesktop.login1.Manager.PowerOff(true)` |
-| Personalizada | `GLib.shell_parse_argv()` + `Util.spawn()` |
+| Lock | `SystemActions.activateLockScreen()` |
+| Log Out | `org.gnome.SessionManager.Logout(1)` (without GNOME's dialog) |
+| Suspend | `SystemActions.activateSuspend()` |
+| Hibernate | `org.freedesktop.login1.Manager.Hibernate(true)` |
+| Switch User | `SystemActions.activateSwitchUser()` |
+| Restart | `org.freedesktop.login1.Manager.Reboot(true)` |
+| Power Off | `org.freedesktop.login1.Manager.PowerOff(true)` |
+| Custom | `GLib.shell_parse_argv()` + `Util.spawn()` |
 
-O GNOME 50 não tem mais um método no `gnome-session` para reiniciar ou desligar sem abrir a janela dele. Como a confirmação, quando ativada, é feita pela própria extensão, ela chama o logind diretamente. O argumento `true` permite que o polkit peça senha quando necessário.
+GNOME 50's `gnome-session` no longer offers a way to restart or power off without its own dialog. Since the extension provides the confirmation itself, it calls logind directly. The `true` argument lets polkit ask for a password when needed.
 
-A disponibilidade vem de `SystemActions` (`canLockScreen`, `canSuspend`, `canSwitchUser`, `canRestart`, `canPowerOff`). Para hibernar, a extensão pergunta ao logind (`CanHibernate`, de forma assíncrona) ao abrir o menu; a consulta é cancelada se o menu fechar antes.
+Availability comes from `SystemActions` (`canLockScreen`, `canSuspend`, `canSwitchUser`, `canRestart`, `canPowerOff`). For hibernate, the extension asks logind (`CanHibernate`, asynchronously) when the menu opens, and cancels the query if the menu closes first.
 
-### Ações personalizadas
+### Custom actions
 
-A linha de comando é dividida em argumentos com `GLib.shell_parse_argv()`, que entende aspas e barras invertidas como um shell, e iniciada com `Util.spawn()` do GNOME Shell. Esse comando procura o programa no `PATH` e mostra uma notificação se não conseguir iniciá-lo.
+The command line is split into arguments by `GLib.shell_parse_argv()`, which handles quotes and backslashes like a shell. The program is then started with GNOME Shell's `Util.spawn()`, which looks it up in `PATH` and shows a notification if it cannot start.
 
-**Nenhum shell é executado.** `echo oi; rm -rf ~` vira o comando `echo` com os argumentos `oi;`, `rm`, `-rf` e `~`, sem expansão de variáveis, pipes ou redirecionamentos. Para usar esses recursos, peça um shell explicitamente: `sh -c "xset dpms force off"`.
+**No shell runs.** `echo hi; rm -rf ~` becomes `echo` with the arguments `hi;`, `rm`, `-rf` and `~`, with no variable expansion, pipes or redirections. To use those features, ask for a shell explicitly: `sh -c "xset dpms force off"`.
 
-O diálogo de edição nas preferências:
-- exige nome e um comando com aspas fechadas;
-- avisa se o programa não estiver no `PATH`;
-- mostra uma prévia do ícone e avisa se ele não existir (o menu usa `system-run-symbolic` no lugar).
+The edit dialog in the preferences:
 
-Nomes e comandos são exibidos como texto puro.
+- requires a name and a command with balanced quotes;
+- warns when the program is not in `PATH`;
+- previews the icon and warns when it is not in the theme (the menu falls back to `system-run-symbolic`).
 
-### Idioma
+Names and commands are shown as plain text.
 
-As strings são marcadas com `_()` e o domínio gettext `fast-gnome-menu` é declarado no `metadata.json`. O GNOME Shell procura os `.mo` em `locale/` dentro da pasta da extensão.
+### Language
 
-## Estrutura do projeto
+Strings are marked with `_()`, and the gettext domain `fast-gnome-menu` is declared in `metadata.json`. GNOME Shell looks up the `.mo` files in `locale/` inside the extension folder.
+
+## Project layout
 
 ```
 fast-gnome-menu/
-├── metadata.json          # UUID, versões suportadas, schema e domínio gettext
-├── extension.js           # Menu, confirmação, ícone na barra e execução das ações
-├── prefs.js               # Janela de preferências (GTK 4 + libadwaita)
-├── actions.js             # Catálogo de ações nativas e personalizadas
-├── layout.js              # Disposições e navegação pelas setas (sem dependências do Shell)
-├── color.js               # Validação e contraste da cor de destaque (sem dependências do Shell)
-├── stylesheet-dark.css    # Estilo do tema escuro
-├── stylesheet-light.css   # Estilo do tema claro
-├── stylesheet.css         # Cópia do escuro, usada se a variante não for encontrada
-├── schemas/               # Schema GSettings
-├── po/                    # Modelo (.pot) e traduções (pt_BR, es)
+├── metadata.json          # UUID, supported versions, schema and gettext domain
+├── extension.js           # Menu, confirmation, top bar icon and running actions
+├── prefs.js               # Preferences window (GTK 4 + libadwaita)
+├── actions.js             # Catalog of built-in and custom actions
+├── layout.js              # Layouts and arrow-key navigation (no GNOME Shell imports)
+├── color.js               # Highlight color validation and contrast (no GNOME Shell imports)
+├── stylesheet-dark.css    # Dark style
+├── stylesheet-light.css   # Light style
+├── stylesheet.css         # Copy of the dark style, used if the variant is missing
+├── schemas/               # GSettings schema
+├── po/                    # Template (.pot) and translations (pt_BR, es)
 ├── tests/
-│   ├── unit.js            # Testes unitários (gjs)
-│   ├── smoke.sh           # Teste numa sessão headless, com capturas
-│   └── devtools/          # Extensão auxiliar usada só pelo smoke test
-├── docs/screenshots/      # Capturas usadas neste README
+│   ├── unit.js            # Unit tests (gjs)
+│   ├── smoke.sh           # Test in a headless session, with screenshots
+│   └── devtools/          # Helper extension used only by the smoke test
+├── docs/screenshots/      # Screenshots used in this README
 ├── .github/workflows/     # CI
-└── build.sh               # Compilação, instalação, testes, empacotamento e traduções
+└── build.sh               # Building, installing, testing, packing and translations
 ```
 
-`schemas/gschemas.compiled`, `locale/` e `tests/output/` são gerados e não são versionados. O `.zip` de `./build.sh pack` contém só os arquivos da extensão.
+`schemas/gschemas.compiled`, `locale/` and `tests/output/` are generated and not versioned. The `.zip` from `./build.sh pack` contains only the extension files.
 
-### Adicionando uma ação nativa
+### Adding a built-in action
 
-Para comandos simples, prefira uma [ação personalizada](#ações-personalizadas). Para uma ação nativa:
+For simple commands, prefer a [custom action](#custom-actions). For a built-in one:
 
-1. adicione a entrada em `getActions()` em [actions.js](actions.js) com nome, ícone e letra;
-2. trate o identificador em `_activate()` em [extension.js](extension.js) e, se houver propriedade de disponibilidade em `SystemActions`, inclua-a em `AVAILABILITY`;
-3. acrescente o identificador à descrição da chave `actions` no schema e à lista em `tests/unit.js`;
-4. rode `./build.sh pot` e traduza o texto novo.
+1. add the entry to `getActions()` in [actions.js](actions.js), with name, icon and letter;
+2. handle the id in `_activate()` in [extension.js](extension.js) and, if `SystemActions` has an availability property for it, add it to `AVAILABILITY`;
+3. add the id to the description of the `actions` key in the schema and to the list in `tests/unit.js`;
+4. run `./build.sh pot` and translate the new text.
 
-## Compilação e empacotamento
+## Building and packaging
 
-| Comando | O que faz |
+| Command | What it does |
 |---|---|
-| `./build.sh` | Compila o schema (modo estrito) e as traduções na própria pasta |
-| `./build.sh install` | Compila e instala em `~/.local/share/gnome-shell/extensions/<uuid>` |
-| `./build.sh stage DIR` | Compila e copia a extensão para `DIR/<uuid>` (usado pelos testes) |
-| `./build.sh unit` | Roda os testes unitários |
-| `./build.sh test` | Roda os testes unitários e o smoke test headless, sem instalar nada na sua sessão |
-| `./build.sh dev` | Instala e abre um GNOME Shell aninhado numa janela |
-| `./build.sh prefs` | Instala e reabre a janela de preferências com o `prefs.js` novo |
-| `./build.sh pack` | Gera `<uuid>.shell-extension.zip` para o [extensions.gnome.org](https://extensions.gnome.org) |
-| `./build.sh pot` | Atualiza o `.pot` e os `.po` a partir do código |
+| `./build.sh` | Compiles the schema (strict mode) and the translations in place |
+| `./build.sh install` | Builds and installs to `~/.local/share/gnome-shell/extensions/<uuid>` |
+| `./build.sh stage DIR` | Builds and copies the extension to `DIR/<uuid>` (used by the tests) |
+| `./build.sh unit` | Runs the unit tests |
+| `./build.sh test` | Runs the unit tests and the headless smoke test, without installing anything in your session |
+| `./build.sh dev` | Installs and opens a nested GNOME Shell in a window |
+| `./build.sh prefs` | Installs and reopens the preferences window with the new `prefs.js` |
+| `./build.sh pack` | Creates `<uuid>.shell-extension.zip` for [extensions.gnome.org](https://extensions.gnome.org) |
+| `./build.sh pot` | Updates the `.pot` and the `.po` files from the code |
 
-A lista de arquivos da extensão fica numa só variável (`SOURCES` no `build.sh`), usada por `install`, `stage`, `pack` e `pot`. Um arquivo novo só precisa entrar ali.
+The list of extension files lives in one variable (`SOURCES` in `build.sh`), used by `install`, `stage`, `pack` and `pot`. A new file only needs to be added there.
 
-## Testes
+## Tests
 
-| Nível | Comando | Tempo | O que cobre |
+| Level | Command | Time | Covers |
 |---|---|---|---|
-| Unitário | `./build.sh unit` | ~1 s | Disposições, navegação, cor e catálogo de ações |
-| Smoke (headless) | `./build.sh test` | ~1 min | O menu e as preferências rodando num GNOME Shell real, com capturas |
-| CI | automático no GitHub | ~1 min | Schema, traduções, modelo `.pot` em dia e testes unitários |
+| Unit | `./build.sh unit` | ~1 s | Layouts, navigation, colors and the action catalog |
+| Smoke (headless) | `./build.sh test` | ~1 min | The menu and the preferences running in a real GNOME Shell, with screenshots |
+| CI | automatic on GitHub | ~1 min | Schema, translations, an up-to-date `.pot` and the unit tests |
 
-### Testes unitários: `./build.sh unit`
+### Unit tests: `./build.sh unit`
 
-[tests/unit.js](tests/unit.js) carrega `layout.js`, `color.js` e `actions.js` direto no `gjs`, sem GNOME Shell. São 225 verificações:
+[tests/unit.js](tests/unit.js) loads `layout.js`, `color.js` and `actions.js` straight into `gjs`, with no GNOME Shell. It runs 225 checks:
 
-- **Disposições:** para cada disposição e de 1 a 9 botões, a quantidade de posições, a normalização a partir de 0 e a ausência de sobreposição; mais as formas esperadas (2×2, dado, 2×3, linha, coluna, centro do círculo, desenho personalizado e sobra abaixo).
-- **Navegação:** caminhos esperados nas grades e no padrão de 5; todos os botões alcançáveis; botões desativados pulados na mesma direção.
-- **Cor:** aceita só `#rrggbb` e rejeita tentativas como `#123456; color: red`; contraste em cores claras e escuras.
-- **Ações:** ações personalizadas inválidas descartadas, ícone padrão e letras sem repetição.
+- **Layouts:** for every layout and 1 to 9 buttons, the number of positions, normalization to 0 and no overlap; plus the expected shapes (2×2, die face, 2×3, row, column, circle center, custom drawing and overflow below).
+- **Navigation:** expected routes in grids and in the 5-button layout, every button reachable, disabled buttons skipped in the same direction.
+- **Colors:** only `#rrggbb` is accepted and attempts like `#123456; color: red` are rejected; contrast on light and dark colors.
+- **Actions:** invalid custom actions dropped, default icon, no duplicate letters.
 
-### Teste automático: `./build.sh test`
+### Smoke test: `./build.sh test`
 
-[tests/smoke.sh](tests/smoke.sh) roda a extensão num GNOME Shell **headless** (sem janela e sem tela), percorre cenários, salva capturas em `tests/output/` e falha se aparecer qualquer erro de JavaScript ou se uma verificação não passar.
+[tests/smoke.sh](tests/smoke.sh) runs the extension in a **headless** GNOME Shell (no window, no screen). It goes through several scenarios, saves screenshots in `tests/output/`, and fails on any JavaScript error or failed check.
 
-| # | Cenário | Verifica |
+| # | Scenario | Checks |
 |---|---|---|
-| 1 | Menu padrão, foco movido pelas setas, ação acionada | O menu fecha e a ação é registrada |
-| 2 | Confirmação aberta com dois cliques rápidos e cancelada | Só uma confirmação abre |
-| 3 | 6 ações com uma personalizada, cor própria, sem painel | A ação personalizada é acionada |
-| 4 | 5 ações (dado), tema claro, espaçamento maior | Captura |
-| 5 | Circunferência, painel translúcido, desfoque, canto superior direito | Captura |
-| 6 | Círculo com centro, na base | Captura |
-| 7 | Desenho em T, à esquerda, com confirmação | Captura |
-| 8 | Escala de interface 2 num monitor pequeno | Os botões não se sobrepõem e tudo cabe na tela |
-| 9 | As três abas das preferências | Abrem sem erro |
+| 1 | Default menu, focus moved with the arrows, an action triggered | The menu closes and the action is logged |
+| 2 | Confirmation opened with two quick clicks, then cancelled | Only one confirmation opens |
+| 3 | 6 actions with a custom one, custom color, no panel | The custom action runs |
+| 4 | 5 actions (die face), light style, larger spacing | Screenshot |
+| 5 | Circle, translucent panel, blur, top-right corner | Screenshot |
+| 6 | Circle with center, at the bottom | Screenshot |
+| 7 | T-shaped drawing, on the left, with a confirmation | Screenshot |
+| 8 | Interface scale 2 on a small screen | Buttons do not overlap and everything fits on screen |
+| 9 | The three preferences pages | They open without errors |
 
-**Isolamento**
-- **D-Bus:** barramento próprio (`dbus-run-session`).
-- **Configurações:** banco dconf próprio (`fast_gnome_menu_test`). O script se recusa a limpá-lo se o perfil não for o de teste.
-- **Arquivos:** `XDG_DATA_HOME` temporário, onde a extensão é montada a partir do código atual (`build.sh stage`). A cópia instalada em `~/.local` não é usada nem alterada.
-- **Ações:** dry-run; nada é executado de verdade.
+**Isolation**
+- **D-Bus:** its own bus (`dbus-run-session`).
+- **Settings:** its own dconf database (`fast_gnome_menu_test`). The script refuses to wipe it unless the test profile is active.
+- **Files:** a temporary `XDG_DATA_HOME`, where the extension is staged from the working tree (`build.sh stage`). The copy installed in `~/.local` is neither used nor changed.
+- **Actions:** dry-run; nothing is actually executed.
 
-**Extensão auxiliar:** para controlar o Shell pelo D-Bus (`org.gnome.Shell.Eval` e `Screenshot`), o teste instala só nessa sessão temporária a extensão `tests/devtools/`, que liga o "unsafe mode" do GNOME Shell. Ela nunca vai para a sua sessão nem para o `.zip`.
+**Helper extension:** to drive the shell over D-Bus (`org.gnome.Shell.Eval` and `Screenshot`), the test installs the `tests/devtools/` extension, which turns on GNOME Shell's "unsafe mode". It goes only into that throwaway session, never into your session or the `.zip`.
 
-**Mutação:** as verificações dos cenários 2 e 8 foram conferidas removendo a correção correspondente do código: o teste falha sem ela e passa com ela.
+**Mutation testing:** the checks in scenarios 2 and 8 were verified by removing the matching fix from the code: the test fails without it and passes with it.
 
 ### CI
 
-[.github/workflows/ci.yml](.github/workflows/ci.yml) roda a cada push e pull request no GitHub. Ela verifica:
-- a sintaxe dos scripts;
-- a compilação estrita do schema e das traduções;
-- se as traduções estão completas e sem `fuzzy`;
-- se o `.pot` está em dia com o código;
-- os testes unitários.
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request on GitHub. It checks:
 
-O smoke test não roda na CI, porque os runners do GitHub não têm GNOME Shell 48+. Rode-o localmente antes de publicar.
+- script syntax;
+- strict compilation of the schema and the translations;
+- that the translations are complete and have no `fuzzy` entries;
+- that the `.pot` is up to date with the code;
+- the unit tests.
 
-### Verificação manual
+The smoke test does not run in CI because GitHub's runners do not have GNOME Shell 48+. Run it locally before publishing.
 
-O que os testes automáticos não cobrem e vale conferir à mão após mudanças:
+### Manual checks
 
-- clicar nas células do editor de disposição, salvar uma ação personalizada e trocar a cor pelo seletor nas preferências;
-- as ações reais (bloquear, sair, suspender, reiniciar, desligar e uma personalizada) numa sessão de verdade;
-- o atalho `Super+X` na sessão real;
-- monitores múltiplos, com a opção "Abrir em" nos dois valores.
+What the automated tests do not cover and is worth checking by hand after changes:
 
-## Desenvolvimento e depuração
+- clicking cells in the layout editor, saving a custom action and changing the color with the picker in the preferences;
+- the real actions (lock, log out, suspend, restart, power off and a custom one) in a real session;
+- the `Super+X` shortcut in the real session;
+- multiple monitors, with both values of "Open on".
 
-No Wayland, o GNOME Shell carrega o código da extensão uma única vez por sessão; desativar e ativar não recarrega o JavaScript.
+## Development and debugging
 
-### Menu e estilos: `./build.sh dev`
+On Wayland, GNOME Shell loads an extension's code once per session; disabling and enabling it does not reload the JavaScript.
 
-Abre um GNOME Shell completo dentro de uma janela, com a versão atual da extensão.
+### Menu and styles: `./build.sh dev`
 
-1. edite o código;
-2. rode `./build.sh dev`;
-3. teste na janela, pelo ícone na barra superior ou com **`Super+Alt+X`**;
-4. feche a janela e volte ao passo 1.
+Opens a full GNOME Shell in a window, with the current version of the extension. The cycle:
 
-Detalhes:
-- **Dry-run:** as ações não são executadas, só registradas no log (`Dry run: would activate power-off`). A sessão aninhada usa o barramento de sistema da máquina, então desligar de verdade desligaria o seu computador.
-- **Configurações próprias:** a sessão aninhada tem banco dconf próprio. Ele recebe uma cópia das configurações da extensão, ativa só esta extensão e troca o atalho para `Super+Alt+X`, porque o `Super+X` é capturado pela sua sessão real. A sua sessão real não é alterada.
-- **Ações apagadas:** na janela de teste, Reiniciar, Desligar e Suspender aparecem desativados, porque o sistema não os permite para a sessão aninhada.
-- **Tamanho da janela:** `MUTTER_DEBUG_DUMMY_MODE_SPECS=1280x720 ./build.sh dev`.
+1. edit the code;
+2. run `./build.sh dev`;
+3. test in the window, with the top bar icon or **`Super+Alt+X`**;
+4. close the window and go back to step 1.
 
-### Preferências: `./build.sh prefs`
+Details:
 
-As preferências rodam num processo separado do Shell. O comando instala, encerra esse processo, que guarda o `prefs.js` antigo em cache, e reabre a janela. Atenção: isso fecha qualquer janela de preferências de extensão que estiver aberta.
+- **Dry-run:** actions are not executed, only logged (`Dry run: would activate power-off`). The nested session shares the machine's system bus, so a real power off would turn off your computer.
+- **Separate settings:** the nested session has its own dconf database. It gets a copy of the extension settings, enables only this extension, and changes the shortcut to `Super+Alt+X`, because your real session grabs `Super+X`. Your real session is not changed.
+- **Dimmed actions:** in the test window, Restart, Power Off and Suspend are dimmed because the system does not allow them in a nested session.
+- **Window size:** `MUTTER_DEBUG_DUMMY_MODE_SPECS=1280x720 ./build.sh dev`.
+
+### Preferences: `./build.sh prefs`
+
+The preferences run in a process separate from the shell. This command installs, stops that process (which caches the old `prefs.js`) and reopens the window. Note: this closes any open extension preferences window.
 
 ### Logs
 
 ```sh
-journalctl -f -o cat /usr/bin/gnome-shell   # extensão (prefixo [fast-gnome-menu@wvmj-dev.github.io])
-journalctl -f -o cat --user                 # janela de preferências
+journalctl -f -o cat /usr/bin/gnome-shell   # extension (prefix [fast-gnome-menu@wvmj-dev.github.io])
+journalctl -f -o cat --user                 # preferences window
 ```
 
-## Traduções
+## Translations
 
-Para adicionar um idioma (exemplo: francês):
+To add a language (French, for example):
 
 ```sh
 ./build.sh pot
 msginit -i po/fast-gnome-menu.pot -o po/fr.po -l fr_FR.UTF-8 --no-translator
-# traduza as entradas msgstr em po/fr.po
+# translate the msgstr entries in po/fr.po
 ./build.sh install
 ```
 
-Depois de mudar textos no código, rode `./build.sh pot` e preencha as entradas novas ou marcadas como `fuzzy`. A CI falha se alguma tradução estiver incompleta ou se o `.pot` estiver desatualizado.
+After changing texts in the code, run `./build.sh pot` and fill in the new or `fuzzy` entries. CI fails if a translation is incomplete or the `.pot` is out of date.
 
-## Estado do projeto
+## Project status
 
-### Testado
+### Tested
 
-- GNOME Shell 50 (Fedora 44), Wayland, temas claro e escuro, escala 1× e 2×, nos testes automáticos acima.
+- GNOME Shell 50 (Fedora 44), Wayland, light and dark styles, scale 1× and 2×, through the automated tests above.
 
-### Ainda não testado
+### Not yet tested
 
-- **GNOME Shell 48 e 49:** o `metadata.json` declara suporte, mas só o 50 foi testado.
-- **Monitores múltiplos reais** e idiomas da direita para a esquerda: as posições "esquerda" e "direita" não são invertidas.
-- **Interações nas preferências** (cliques, seletor de cor, diálogos): só a renderização é testada automaticamente.
+- **GNOME Shell 48 and 49:** `metadata.json` declares support, but only 50 was tested.
+- **Real multi-monitor setups** and right-to-left languages: the "left" and "right" positions are not mirrored.
+- **Interactions in the preferences** (clicks, color picker, dialogs): only rendering is tested automatically.
 
-### Falta para publicar
+### Missing before publishing
 
-- **Licença:** o extensions.gnome.org exige uma licença compatível com a GPL (por exemplo, GPL-2.0-or-later). Ainda não há arquivo `LICENSE`.
-- **Envio:** gerar o `.zip` com `./build.sh pack`, revisar as [regras de revisão](https://gjs.guide/extensions/review-guidelines/review-guidelines.html) (incluindo o uso de "GNOME" no nome) e enviar ao extensions.gnome.org.
-- **Versões:** incrementar `version` no `metadata.json` a cada envio e manter um registro de mudanças.
+- **License:** extensions.gnome.org requires a GPL-compatible license (for example GPL-2.0-or-later). There is no `LICENSE` file yet.
+- **Submission:** build the `.zip` with `./build.sh pack`, go through the [review guidelines](https://gjs.guide/extensions/review-guidelines/review-guidelines.html) (including the use of "GNOME" in the name) and submit to extensions.gnome.org.
+- **Versioning:** bump `version` in `metadata.json` on every submission and keep a changelog.
 
-### Limitações conhecidas
+### Known limitations
 
-- **Reiniciar, desligar e hibernar não avisam os aplicativos.** A chamada vai direto ao logind, então o GNOME não pergunta aos aplicativos se há algo a salvar. Salve o trabalho antes, ou use a confirmação como lembrete.
-- **Hibernar costuma aparecer desativado:** o logind só permite com swap grande o bastante e, em muitas distribuições, com configuração extra.
-- **O atalho `Super+X` pode conflitar** com outro atalho; troque-o nas preferências.
-- **"Sair" aparece mesmo em sistemas com um único usuário**, onde o menu do GNOME o esconde, e a extensão não verifica a política `org.gnome.desktop.lockdown disable-log-out`.
-- **O editor de disposição tem 7×7 células.** Um desenho maior, feito pelo terminal, funciona no menu, mas é cortado se for editado nas preferências.
+- **Restart, power off and hibernate do not notify applications.** The call goes straight to logind, so GNOME does not ask applications whether there is unsaved work. Save your work first, or use the confirmation as a reminder.
+- **Hibernate is often dimmed.** logind only allows it with enough swap and, on many distributions, extra setup.
+- **The `Super+X` shortcut may clash** with another shortcut; change it in the preferences.
+- **"Log Out" is shown even on single-user systems**, where GNOME's own menu hides it, and the extension does not check the `org.gnome.desktop.lockdown disable-log-out` policy.
+- **The layout editor has 7×7 cells.** A larger drawing set from a terminal works in the menu, but is cut when edited in the preferences.
 
-## Ideias para o futuro
+## Ideas for later
 
-**Segurança da sessão**
-- **Avisar sobre aplicativos que bloqueiam o desligamento:** listar os inibidores do `gnome-session` e do logind na confirmação, e opcionalmente passar pelo `gnome-session` para que os aplicativos possam pedir para salvar.
-- **Desligamento agendado** ("desligar em 30 min"), com a contagem visível e cancelável pelo próprio menu.
-- **Segurar para confirmar** (pressionar e manter o botão), como alternativa à contagem.
+**Session safety**
+- **Warn about applications blocking shutdown:**
+  - list `gnome-session` and logind inhibitors in the confirmation;
+  - optionally go through `gnome-session`, so applications can ask to save.
+- **Scheduled power off** ("power off in 30 minutes"), with a visible countdown that can be cancelled from the menu.
+- **Hold to confirm** (press and hold the button), as an alternative to the countdown.
 
-**Ações**
-- **Ações nativas novas:**
-  - reiniciar no firmware (UEFI, `SetRebootToFirmwareSetup`);
-  - escolher a entrada de boot (`SetRebootToBootLoaderEntry`);
-  - desligar a tela;
-  - "não perturbe".
-- **Rótulo, ícone e letra de atalho próprios para as ações nativas.**
-- **Grupos ou submenus:** por exemplo, um botão "Reiniciar…" que abre opções de boot.
+**Actions**
+- **New built-in actions:**
+  - reboot into firmware (UEFI, `SetRebootToFirmwareSetup`);
+  - choose a boot entry (`SetRebootToBootLoaderEntry`);
+  - turn the screen off;
+  - do not disturb.
+- **Custom label, icon and shortcut letter for built-in actions.**
+- **Groups or submenus**, for example a "Restart…" button that opens boot options.
 
-**Aparência**
-- **Estilos de animação**, como deslizar a partir da borda conforme a posição, com velocidade ajustável.
-- **Cabeçalho opcional** com avatar e nome do usuário, hora, tempo ligado ou bateria.
-- **Perfis:** salvar, trocar, exportar e importar conjuntos de configurações (JSON).
-- **Menu em todos os monitores** ao mesmo tempo.
+**Appearance**
+- **Animation styles**, such as sliding in from the edge the menu is placed at, with adjustable speed.
+- **Optional header** with the user's avatar and name, the time, uptime or battery.
+- **Profiles:** save, switch, export and import sets of settings (JSON).
+- **Menu on every monitor** at once.
 
-**Interação**
-- **Outras formas de abrir:** canto ativo, gesto do touchpad ou busca do Panorama ("desligar").
-- **Mostrar as teclas de atalho** enquanto `Alt` estiver pressionado.
-- **Melhor suporte a toque** (botões maiores automaticamente) e a gamepad.
+**Interaction**
+- **Other ways to open:** hot corner, touchpad gesture or Overview search ("power off").
+- **Show the shortcut keys** while `Alt` is held.
+- **Better support for touch** (larger buttons automatically) and gamepads.
 
-**Projeto**
-- **Smoke test na CI**, num contêiner Fedora com GNOME Shell headless (renderização por software).
-- **ESLint** com a configuração usada pelo GNOME Shell.
-- **Testes de interação das preferências.**
-- **Mais traduções.**
+**Project**
+- **Smoke test in CI**, in a Fedora container with headless GNOME Shell (software rendering).
+- **ESLint** with the configuration GNOME Shell uses.
+- **Interaction tests for the preferences.**
+- **More translations.**
