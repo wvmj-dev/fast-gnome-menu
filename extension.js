@@ -176,22 +176,25 @@ const PowerMenu = GObject.registerClass({
 
     // Panel size and the position of cell [0, 0], for the given metrics.
     // Square panels fit the buttons' bounding box; round ones are a circle
-    // that reaches the farthest button corner.
+    // that reaches the farthest button corner. Both leave room for the
+    // selected button to grow and keep its corner concentric with the panel's.
     _measure(cells, round, size, radius, spacing) {
+        const scale = this._metrics.focusScale;
         const step = size + spacing;
         const maxX = Math.max(...cells.map(([x]) => x));
         const maxY = Math.max(...cells.map(([, y]) => y));
         if (!round) {
+            const pad = spacing + size * (scale - 1) / 2;
             return {
-                width: maxX * step + size + 2 * spacing,
-                height: maxY * step + size + 2 * spacing,
-                originX: spacing,
-                originY: spacing,
-                panelRadius: radius + spacing,
+                width: maxX * step + size + 2 * pad,
+                height: maxY * step + size + 2 * pad,
+                originX: pad,
+                originY: pad,
+                panelRadius: radius * scale + spacing,
             };
         }
         const [cx, cy] = [maxX / 2, maxY / 2];
-        const corner = (size / 2 - radius) * Math.SQRT2 + radius;
+        const corner = ((size / 2 - radius) * Math.SQRT2 + radius) * scale;
         const farthest = Math.max(...cells.map(([x, y]) => Math.hypot(x - cx, y - cy)));
         const half = Math.ceil(farthest * step + corner + spacing);
         return {
