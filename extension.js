@@ -662,14 +662,18 @@ const PowerMenu = GObject.registerClass({
         return super.vfunc_key_press_event(event);
     }
 
+    // Presses inside the panel must propagate: St.Button clicks are a
+    // Clutter.ClickGesture, which is cancelled when an actor on the event
+    // path stops the press.
     vfunc_button_press_event(event) {
         const actor = global.stage.get_event_actor(event);
-        if (this._confirmBox) {
-            if (!this._confirmBox.contains(actor))
-                this._hideConfirmation();
-        } else if (this._closeOnClickOutside && !this._menu.contains(actor)) {
+        const panel = this._confirmBox ?? this._menu;
+        if (panel.contains(actor))
+            return Clutter.EVENT_PROPAGATE;
+        if (this._confirmBox)
+            this._hideConfirmation();
+        else if (this._closeOnClickOutside)
             this.close();
-        }
         return Clutter.EVENT_STOP;
     }
 });

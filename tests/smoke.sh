@@ -76,6 +76,23 @@ shot() {
     echo "  screenshot: $FGM_OUT/$1.png"
 }
 pause() { sleep "${1:-0.6}"; }
+# Real pointer click on an actor's center through a virtual mouse, unlike
+# emit('clicked'), which skips the event path the buttons' gestures rely on.
+POINTER="(globalThis.fgmPointer ??= global.stage.context.get_backend().get_default_seat()
+    .create_virtual_device(imports.gi.Clutter.InputDeviceType.POINTER_DEVICE))"
+click() {
+    # The headless shell drops one axis of the first motion; send it twice.
+    for _ in 1 2; do
+        run "(() => { const [x, y] = $1.get_transformed_position(); const [w, h] = $1.get_transformed_size();
+            $POINTER.notify_absolute_motion(imports.gi.GLib.get_monotonic_time(), x + w / 2, y + h / 2); })(); 1"
+        pause 0.2
+    done
+    run "$POINTER.notify_button(imports.gi.GLib.get_monotonic_time(), imports.gi.Clutter.BUTTON_PRIMARY,
+        imports.gi.Clutter.ButtonState.PRESSED); 1"
+    pause 0.1
+    run "$POINTER.notify_button(imports.gi.GLib.get_monotonic_time(), imports.gi.Clutter.BUTTON_PRIMARY,
+        imports.gi.Clutter.ButtonState.RELEASED); 1"
+}
 
 EXT="Main.extensionManager.lookup('$FGM_UUID')"
 MENU="$EXT.stateObj._menu"
@@ -98,6 +115,28 @@ shot 02-focus-moved
 run "$MENU._buttons[1].emit('clicked', 0); 1"; pause
 is_true "$EXT.stateObj._menu === null" || { echo "menu did not close after an action"; exit 1; }
 grep -q "Dry run: would activate logout" "$log" || { echo "action was not activated"; exit 1; }
+
+echo "1b. mouse click on a button, then on the confirmation"
+# Custom actions are always available; logind may refuse the built-in ones here.
+dconf write ${P}custom-actions "[('custom-click001', 'Click', 'utilities-terminal-symbolic', 'true')]"
+dconf write ${P}actions "['lock-screen', 'custom-click001']"
+open_menu
+click "$MENU._buttons[1]"; pause
+grep -q "Dry run: would activate custom-click001" "$log" ||
+    { echo "mouse click did not activate the action"; exit 1; }
+dconf write ${P}confirm-mode "'all'"
+open_menu
+click "$MENU._buttons[1]"; pause 1
+is_true "!!$MENU._confirmBox" || { echo "mouse click did not open the confirmation"; exit 1; }
+click "$MENU._dialogButtons[0]"; pause 1
+is_true "!$MENU._confirmBox" || { echo "mouse click on Cancel did not close the confirmation"; exit 1; }
+click "$MENU._buttons[1]"; pause 1
+click "$MENU._dialogButtons[1]"; pause
+[ "$(grep -c "Dry run: would activate custom-click001" "$log")" = 2 ] ||
+    { echo "mouse click on Confirm did not run the action"; exit 1; }
+dconf reset ${P}confirm-mode
+dconf reset ${P}actions
+dconf reset ${P}custom-actions
 
 echo "2. confirmation"
 dconf write ${P}confirm-mode "'all'"
