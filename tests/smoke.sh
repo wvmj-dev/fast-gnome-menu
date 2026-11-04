@@ -138,6 +138,13 @@ dconf reset ${P}confirm-mode
 dconf reset ${P}actions
 dconf reset ${P}custom-actions
 
+echo "1c. mouse click on the top bar button opens and closes the menu"
+# PanelMenu.Button handles clicks with gestures since GNOME 50; make sure
+# the indicator's own event handler still gets the press.
+click "$EXT.stateObj._indicator"; pause
+is_true "!!$MENU" || { echo "top bar button did not open the menu"; exit 1; }
+close_menu
+
 echo "2. confirmation"
 dconf write ${P}confirm-mode "'all'"
 open_menu
