@@ -94,6 +94,24 @@ click() {
         imports.gi.Clutter.ButtonState.RELEASED); 1"
 }
 
+# Real key presses through a virtual keyboard, so they go through Mutter's
+# keybinding handling like a physical key would. press <modifier> <key>.
+KEYBOARD="(globalThis.fgmKeyboard ??= global.stage.context.get_backend().get_default_seat()
+    .create_virtual_device(imports.gi.Clutter.InputDeviceType.KEYBOARD_DEVICE))"
+press() {
+    local key
+    for key in "$1" "$2"; do
+        run "$KEYBOARD.notify_keyval(imports.gi.GLib.get_monotonic_time(), imports.gi.Clutter.KEY_$key,
+            imports.gi.Clutter.KeyState.PRESSED); 1"
+        pause 0.05
+    done
+    for key in "$2" "$1"; do
+        run "$KEYBOARD.notify_keyval(imports.gi.GLib.get_monotonic_time(), imports.gi.Clutter.KEY_$key,
+            imports.gi.Clutter.KeyState.RELEASED); 1"
+        pause 0.05
+    done
+}
+
 EXT="Main.extensionManager.lookup('$FGM_UUID')"
 MENU="$EXT.stateObj._menu"
 open_menu() { run "Main.overview.hide(); $EXT.stateObj.toggle(); 1"; pause; }
@@ -239,8 +257,44 @@ close_menu
 run "imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor = 1; 1"
 pause 2
 
-echo "9. preferences window"
-n=12
+echo "9. per-action shortcuts open the menu with the action selected"
+# Log Out and custom actions are always available; logind may refuse the
+# others in this session, and an unavailable action is never selected.
+dconf write ${P}custom-actions "[('custom-key00001', 'Terminal', 'utilities-terminal-symbolic', 'true')]"
+dconf write ${P}actions "['lock-screen', 'logout', 'restart', 'custom-key00001']"
+dconf reset ${P}layout
+FOCUSED="$MENU._ids[$MENU._focusedIndex()]"
+dconf write ${P}action-shortcuts "{'custom-key00001': '<Alt>t', 'logout': '<Alt>e', 'suspend': '<Alt>s'}"
+pause
+press Alt_L t; pause
+is_true "$FOCUSED === 'custom-key00001'" || { echo "Alt+T did not open the menu on the custom action"; exit 1; }
+shot 12-shortcut-custom
+# With the menu open, another action's shortcut moves the selection.
+press Alt_L e; pause
+is_true "$FOCUSED === 'logout'" || { echo "Alt+E did not select Log Out in the open menu"; exit 1; }
+close_menu
+# Suspend is not in the menu, so its shortcut is not grabbed.
+press Alt_L s; pause
+is_true "!$MENU" || { echo "shortcut of a hidden action opened the menu"; exit 1; }
+# Disable while the menu is open: everything goes away and the key is free.
+press Alt_L t; pause
+run "Main.extensionManager.disableExtension('$FGM_UUID'); 1"; pause
+is_true "!Main.uiGroup.get_children().some(c => c.has_style_class_name?.('fgm-backdrop'))" ||
+    { echo "menu left behind after disable"; exit 1; }
+press Alt_L t; pause
+run "Main.extensionManager.enableExtension('$FGM_UUID'); 1"; pause 1
+is_true "$EXT.state === 1 && $EXT.stateObj._actionGrabs.size === 2" ||
+    { echo "shortcuts not grabbed again after enable"; exit 1; }
+press Alt_L t; pause
+is_true "$FOCUSED === 'custom-key00001'" || { echo "Alt+T stopped working after disable/enable"; exit 1; }
+close_menu
+# Kept for the Behavior page screenshot.
+dconf reset ${P}custom-actions
+dconf write ${P}actions "['lock-screen', 'logout', 'restart', 'power-off']"
+dconf write ${P}action-shortcuts "{'lock-screen': '<Alt>l', 'logout': '<Alt>e', 'suspend': '<Alt>s'}"
+
+echo "10. preferences window"
+n=13
 for page in actions appearance behavior; do
     # The prefs app is D-Bus activated: pass the page through the activation
     # environment and restart only the instance on this private bus.
