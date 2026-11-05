@@ -12,6 +12,10 @@ Use it with the keyboard (arrow keys or shortcut keys) or the mouse. Place it at
 |---|---|---|
 | ![Light menu in the die-face layout](docs/screenshots/light.png) | ![Buttons drawn as a T shape](docs/screenshots/custom-layout.png) | ![Appearance page of the preferences](docs/screenshots/preferences.png) |
 
+| Opened by an action's shortcut | Action shortcuts |
+|---|---|
+| ![Menu opened by Alt+T with the Terminal custom action already selected](docs/screenshots/shortcut.png) | ![Action shortcuts group: Alt+L for Lock, Alt+E for Log Out, and greyed-out rows for actions not in the menu](docs/screenshots/preferences-shortcuts.png) |
+
 The screenshots are taken by the [smoke test](#smoke-test-buildsh-test). The UI in them is in Brazilian Portuguese, one of the bundled translations.
 
 ## Contents
@@ -48,6 +52,7 @@ The screenshots are taken by the [smoke test](#smoke-test-buildsh-test). The UI 
 - **Background:**
   - dimming and blur of the screen behind the menu;
   - a solid, translucent (frosted glass when combined with blur) or invisible panel.
+- **Shortcut per action:** for example `Alt+P` opens the menu with Power Off already selected, so `Alt+P`, `Enter` powers off. Works for built-in and custom actions.
 - **Highlight:** the selected button uses the system accent color, or a color of your choice, and grows with a smooth animation.
 - **Optional confirmation** for no action, every action or the chosen ones:
   - shows the action's button;
@@ -142,6 +147,22 @@ gnome-extensions uninstall fast-gnome-menu@wvmj-dev.github.io
 
 Open the menu with **`Super+X`** (default shortcut) or with the power icon in the top bar, using a click, a tap or `Enter` while navigating the bar with the keyboard.
 
+### Action shortcuts
+
+Each action can also have its own shortcut, which opens the menu with that action already selected: `Alt+P`, `Enter` powers off. None are set by default. They are set in the extension's preferences, not in GNOME Settings → Keyboard → Custom Shortcuts:
+
+1. open the preferences (**Extensions** app, or `gnome-extensions prefs fast-gnome-menu@wvmj-dev.github.io`);
+2. go to **Behavior → Action shortcuts**;
+3. click the action's row and press the key combination. `Esc` cancels, `Backspace` disables it, and the button at the end of the row removes it.
+
+- **Selects, does not run:** the action still waits for `Enter`, and the confirmation, when enabled, still applies.
+- **With the menu open,** an action's shortcut moves the selection to it.
+- **One combination, one action:** giving a combination to an action takes it from any other action. The combination that opens the menu (`Super+X` by default) is refused.
+- **Only actions shown in the menu:** the rows of the others are greyed out, and their shortcuts do nothing.
+
+### Keys in the menu
+
+
 | Key | Effect |
 |---|---|
 | `←` `→` `↑` `↓` | Moves to the neighbouring button in that direction. At the end of a row or column, wraps to the other end |
@@ -199,6 +220,7 @@ Changes apply the next time the menu opens.
 
 **Behavior page**
 - shortcut and top bar icon;
+- a shortcut per action, which opens the menu with that action selected;
 - monitor to open on;
 - action selected on opening;
 - closing on outside clicks;
@@ -225,6 +247,7 @@ Changes apply the next time the menu opens.
 | `backdrop-opacity` | `i` (0–100) | `50` | Screen dimming in percent |
 | `backdrop-blur` | `i` (0–60) | `0` | Screen blur radius; `0` turns it off |
 | `toggle-menu` | `as` | `['<Super>x']` | Shortcut that opens/closes the menu |
+| `action-shortcuts` | `a{ss}` | `{}` | Action id → accelerator (for example `{'power-off': '<Alt>p'}`) that opens the menu with that action selected. Only actions in `actions` get theirs; one equal to `toggle-menu` is ignored |
 | `show-indicator` | `b` | `true` | Shows the icon in the top bar |
 | `monitor` | `s` | `'pointer'` | `'pointer'` (monitor with the pointer) or `'primary'` |
 | `initial-focus` | `s` | `'first'` | Action selected on opening: `'first'` or `'last'` (the last one used, stored in `last-action`) |
@@ -244,6 +267,7 @@ DIR=~/.local/share/gnome-shell/extensions/fast-gnome-menu@wvmj-dev.github.io/sch
 
 gsettings --schemadir "$DIR" set $SCHEMA layout "'circle'"
 gsettings --schemadir "$DIR" set $SCHEMA custom-actions "[('custom-term', 'Terminal', 'utilities-terminal-symbolic', 'gnome-terminal')]"
+gsettings --schemadir "$DIR" set $SCHEMA action-shortcuts "{'power-off': '<Alt>p', 'restart': '<Alt>r'}"
 ```
 
 ## How it works
@@ -252,13 +276,15 @@ gsettings --schemadir "$DIR" set $SCHEMA custom-actions "[('custom-term', 'Termi
 
 The shortcut is registered with `Main.wm.addKeybinding` and works on the desktop and in the Overview. It also works while the menu is open, to close it, but never opens the menu on top of another system dialog.
 
+The per-action shortcuts all live in one dictionary key, and `addKeybinding` needs one schema key per binding. So they are grabbed with `global.display.grab_accelerator`, the same call GNOME Shell uses for shortcuts grabbed by other programs, and allowed in the same modes with `Main.wm.allowKeybinding`. They are grabbed again whenever `action-shortcuts`, `actions`, `custom-actions` or `toggle-menu` changes, and released on `disable()`. A combination that is invalid or already taken is skipped with a warning in the log.
+
 When the menu opens, the extension:
 
 1. creates a full-screen layer (`PowerMenu`) that dims, and optionally blurs, the background and receives clicks outside the panel;
 2. computes the button positions for the layout and, if they do not fit the monitor's work area, scales down size, spacing and corners;
 3. places the panel on the chosen monitor according to `position`;
 4. calls `Main.pushModal`, which grabs keyboard and mouse until the menu closes;
-5. selects the first available action (or the last one used) and animates in.
+5. selects the action of the shortcut that opened it, or else the first available action (or the last one used), and animates in. Hibernate is only known to be available after logind answers, so its shortcut selects it at that point, unless a key was pressed in the meantime.
 
 ### Button layout
 
@@ -384,7 +410,7 @@ fast-gnome-menu/
 ├── metadata.json          # UUID, supported versions, schema and gettext domain
 ├── extension.js           # Menu, confirmation, top bar icon and running actions
 ├── prefs.js               # Preferences window (GTK 4 + libadwaita)
-├── actions.js             # Catalog of built-in and custom actions
+├── actions.js             # Catalog of built-in and custom actions, shortcut assignment
 ├── layout.js              # Layouts and arrow-key navigation (no GNOME Shell imports)
 ├── color.js               # Highlight color validation and contrast (no GNOME Shell imports)
 ├── stylesheet-dark.css    # Dark style
@@ -438,12 +464,13 @@ The list of extension files lives in one variable (`SOURCES` in `build.sh`), use
 
 ### Unit tests: `./build.sh unit`
 
-[tests/unit.js](tests/unit.js) loads `layout.js`, `color.js` and `actions.js` straight into `gjs`, with no GNOME Shell. It runs 225 checks:
+[tests/unit.js](tests/unit.js) loads `layout.js`, `color.js` and `actions.js` straight into `gjs`, with no GNOME Shell. It runs 231 checks:
 
 - **Layouts:** for every layout and 1 to 9 buttons, the number of positions, normalization to 0 and no overlap; plus the expected shapes (2×2, die face, 2×3, row, column, circle center, custom drawing and overflow below).
 - **Navigation:** expected routes in grids and in the 5-button layout, every button reachable, disabled buttons skipped in the same direction.
 - **Colors:** only `#rrggbb` is accepted and attempts like `#123456; color: red` are rejected; contrast on light and dark colors.
 - **Actions:** invalid custom actions dropped, default icon, no duplicate letters.
+- **Shortcuts:** assigning, replacing and removing one; a combination given to an action is taken from any other action.
 
 ### Smoke test: `./build.sh test`
 
@@ -459,7 +486,8 @@ The list of extension files lives in one variable (`SOURCES` in `build.sh`), use
 | 6 | Circle with center, at the bottom | Screenshot |
 | 7 | T-shaped drawing, on the left, with a confirmation | Screenshot |
 | 8 | Interface scale 2 on a small screen | Buttons do not overlap and everything fits on screen |
-| 9 | The three preferences pages | They open without errors |
+| 9 | Per-action shortcuts pressed on a virtual keyboard, then the extension disabled and enabled with the menu open | The menu opens on the action, another shortcut moves the selection, a hidden action's shortcut does nothing, nothing is left behind and the shortcuts come back |
+| 10 | The three preferences pages | They open without errors |
 
 **Isolation**
 - **D-Bus:** its own bus (`dbus-run-session`).
@@ -489,7 +517,7 @@ What the automated tests do not cover and is worth checking by hand after change
 
 - clicking cells in the layout editor, saving a custom action and changing the color with the picker in the preferences;
 - the real actions (lock, log out, suspend, restart, power off and a custom one) in a real session;
-- the `Super+X` shortcut in the real session;
+- the `Super+X` shortcut and the per-action shortcuts in the real session, and that they do not clash with the applications you use;
 - multiple monitors, with both values of "Open on".
 
 ## Development and debugging
@@ -559,6 +587,8 @@ After changing texts in the code, run `./build.sh pot` and fill in the new or `f
 - **Restart, power off and hibernate do not notify applications.** The call goes straight to logind, so GNOME does not ask applications whether there is unsaved work. Save your work first, or use the confirmation as a reminder.
 - **Hibernate is often dimmed.** logind only allows it with enough swap and, on many distributions, extra setup.
 - **The `Super+X` shortcut may clash** with another shortcut; change it in the preferences.
+- **Per-action shortcuts are global.** While set, an application no longer receives that combination (for example `Alt+P` or `Alt+E` in some apps' menus). The preferences do not warn about clashes with other GNOME shortcuts; a combination already taken is skipped and logged.
+- **A per-action shortcut can only be set while the action is enabled** in the menu.
 - **"Log Out" is shown even on single-user systems**, where GNOME's own menu hides it, and the extension does not check the `org.gnome.desktop.lockdown disable-log-out` policy.
 - **The layout editor has 7×7 cells.** A larger drawing set from a terminal works in the menu, but is cut when edited in the preferences.
 
