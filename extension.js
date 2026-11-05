@@ -42,6 +42,12 @@ const POSITIONS = {
     'bottom-right': [END, END],
 };
 
+// The shortcuts also work in SYSTEM_MODAL, which is the menu's own mode, so
+// they can close it or move its selection; canOpen() keeps them from opening
+// the menu on top of another modal dialog.
+const SHORTCUT_MODES = Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW | Shell.ActionMode.SYSTEM_MODAL;
+const canOpen = () => Main.actionMode & (Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW);
+
 const PowerMenu = GObject.registerClass({
     Signals: {'action-activated': {param_types: [GObject.TYPE_STRING]}},
 }, class PowerMenu extends St.Widget {
@@ -278,6 +284,10 @@ const PowerMenu = GObject.registerClass({
                 try {
                     const [answer] = conn.call_finish(res).deepUnpack();
                     button.reactive = answer === 'yes' || answer === 'challenge';
+                    // Opened by the Hibernate shortcut: select it now that
+                    // it is known to be available.
+                    if (button.reactive && this._wanted === button && !this._confirmBox)
+                        button.grab_key_focus();
                 } catch (e) {
                     if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
                         logError(e, 'CanHibernate failed');
@@ -523,13 +533,36 @@ const PowerMenu = GObject.registerClass({
         this._confirmFor.grab_key_focus();
     }
 
-    open() {
+    /**
+     * @param {?string} actionId action to select (from its shortcut);
+     *   null selects the first or the last used one, as configured
+     */
+    open(actionId = null) {
         Main.uiGroup.add_child(this);
         this._grab = Main.pushModal(this, {actionMode: Shell.ActionMode.SYSTEM_MODAL});
 
+        if (actionId && this.selectAction(actionId))
+            return this._animateIn();
         const last = this._buttons[this._ids.indexOf(this._initialId)];
         const first = last?.reactive ? last : this._buttons.find(b => b.reactive);
         (first ?? this).grab_key_focus();
+        this._animateIn();
+    }
+
+    // Selects the button of an action, as its shortcut asks. Returns false
+    // when the action is not in the menu or not available right now.
+    selectAction(id) {
+        if (this._confirmBox)
+            return true;
+        const button = this._buttons[this._ids.indexOf(id)];
+        this._wanted = button ?? null;
+        if (!button?.reactive)
+            return false;
+        button.grab_key_focus();
+        return true;
+    }
+
+    _animateIn() {
 
         this._menu.set_pivot_point(0.5, 0.5);
         this._menu.set_scale(0.9, 0.9);
@@ -623,6 +656,8 @@ const PowerMenu = GObject.registerClass({
     }
 
     vfunc_key_press_event(event) {
+        // The user took over; a late CanHibernate answer must not move the focus.
+        this._wanted = null;
         if (this._confirmBox)
             return this._confirmKeyPress(event.get_key_symbol());
 
@@ -706,23 +741,33 @@ export default class FastGnomeMenuExtension extends Extension {
         this._settings = this.getSettings();
 
         Main.wm.addKeybinding('toggle-menu', this._settings,
-            Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
-            Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW | Shell.ActionMode.SYSTEM_MODAL,
-            () => {
-                // SYSTEM_MODAL is only there so the shortcut can close our own
-                // menu; never open on top of another modal dialog.
-                const canOpen = Main.actionMode & (Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW);
-                if (this._menu || canOpen)
+            Meta.KeyBindingFlags.IGNORE_AUTOREPEAT, SHORTCUT_MODES, () => {
+                if (this._menu || canOpen())
                     this.toggle();
             });
 
-        this._settings.connectObject('changed::show-indicator',
-            () => this._syncIndicator(), this);
+        // Per-action shortcuts live in one dictionary key, so they cannot go
+        // through addKeybinding (one schema key per binding). They are
+        // grabbed directly, the way GNOME Shell grabs them for other apps.
+        this._actionGrabs = new Map();
+        global.display.connectObject('accelerator-activated',
+            (_display, action) => this._onActionShortcut(action), this);
+        this._settings.connectObject(
+            'changed::show-indicator', () => this._syncIndicator(),
+            'changed::action-shortcuts', () => this._syncActionShortcuts(),
+            'changed::actions', () => this._syncActionShortcuts(),
+            'changed::custom-actions', () => this._syncActionShortcuts(),
+            'changed::toggle-menu', () => this._syncActionShortcuts(),
+            this);
         this._syncIndicator();
+        this._syncActionShortcuts();
     }
 
     disable() {
         Main.wm.removeKeybinding('toggle-menu');
+        this._ungrabActionShortcuts();
+        this._actionGrabs = null;
+        global.display.disconnectObject(this);
         this._settings.disconnectObject(this);
         this._menu?.close(false);
         this._menu = null;
@@ -731,7 +776,47 @@ export default class FastGnomeMenuExtension extends Extension {
         this._settings = null;
     }
 
-    toggle() {
+    // Only actions shown in the menu get their shortcut; one that repeats
+    // the open-menu shortcut is skipped, as that one wins.
+    _syncActionShortcuts() {
+        this._ungrabActionShortcuts();
+        const shown = new Set(this._settings.get_strv('actions'));
+        const toggleAccel = this._settings.get_strv('toggle-menu')[0];
+        const shortcuts = this._settings.get_value('action-shortcuts').deepUnpack();
+        for (const [id, accel] of Object.entries(shortcuts)) {
+            if (!accel || !shown.has(id) || accel === toggleAccel)
+                continue;
+            const action = global.display.grab_accelerator(accel, Meta.KeyBindingFlags.IGNORE_AUTOREPEAT);
+            if (action === Meta.KeyBindingAction.NONE) {
+                console.warn(`[${this.uuid}] Shortcut ${accel} for ${id} is invalid or taken`);
+                continue;
+            }
+            Main.wm.allowKeybinding(Meta.external_binding_name_for_action(action), SHORTCUT_MODES);
+            this._actionGrabs.set(action, id);
+        }
+    }
+
+    _ungrabActionShortcuts() {
+        for (const action of this._actionGrabs.keys()) {
+            global.display.ungrab_accelerator(action);
+            Main.wm.allowKeybinding(Meta.external_binding_name_for_action(action), Shell.ActionMode.NONE);
+        }
+        this._actionGrabs.clear();
+    }
+
+    // Opens the menu with the action selected, or selects it in the open menu.
+    _onActionShortcut(action) {
+        const id = this._actionGrabs?.get(action);
+        if (!id)
+            return;
+        if (this._menu)
+            this._menu.selectAction(id);
+        else if (canOpen())
+            this.toggle(id);
+    }
+
+    /** @param {?string} actionId action to select when the menu opens */
+    toggle(actionId = null) {
         if (this._menu) {
             this._menu.close();
             return;
@@ -747,7 +832,7 @@ export default class FastGnomeMenuExtension extends Extension {
             if (this._menu === menu)
                 this._menu = null;
         });
-        menu.open();
+        menu.open(actionId);
         this._menu = menu;
     }
 

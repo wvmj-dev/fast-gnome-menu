@@ -7,7 +7,7 @@ import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import {CUSTOM_ICON, CUSTOM_PREFIX, getActions} from './actions.js';
+import {CUSTOM_ICON, CUSTOM_PREFIX, assignShortcut, getActions} from './actions.js';
 
 const DEFAULT_HIGHLIGHT = '#3584e4';
 
@@ -409,16 +409,19 @@ class LayoutEditorRow extends Adw.ExpanderRow {
     }
 });
 
+/**
+ * A row that shows a shortcut and records a new one when activated.
+ * `read()` returns the current accelerator ('' for none) and `write(accel)`
+ * saves one ('' disables it). `check(accel)` returns an error message when
+ * the combination cannot be used. The owner calls `sync()` after changes.
+ */
 const ShortcutRow = GObject.registerClass(
 class ShortcutRow extends Adw.ActionRow {
-    _init(settings, key) {
-        super._init({
-            title: _('Open menu'),
-            subtitle: _('Keyboard shortcut that shows the menu'),
-            activatable: true,
-        });
-        this._settings = settings;
-        this._key = key;
+    _init({title, subtitle = null, read, write, reset, resetIcon = 'edit-undo-symbolic', resetTooltip, check = () => null}) {
+        super._init({title, subtitle, activatable: true, use_markup: false});
+        this._read = read;
+        this._write = write;
+        this._check = check;
 
         this._label = new Gtk.ShortcutLabel({
             disabled_text: _('Disabled'),
@@ -426,29 +429,26 @@ class ShortcutRow extends Adw.ActionRow {
         });
         this.add_suffix(this._label);
 
-        const reset = new Gtk.Button({
-            icon_name: 'edit-undo-symbolic',
+        this._reset = new Gtk.Button({
+            icon_name: resetIcon,
             valign: Gtk.Align.CENTER,
             css_classes: ['flat'],
-            tooltip_text: _('Reset to default'),
+            tooltip_text: resetTooltip,
         });
-        reset.connect('clicked', () => settings.reset(key));
-        this.add_suffix(reset);
+        this._reset.connect('clicked', reset);
+        this.add_suffix(this._reset);
 
-        settings.connect(`changed::${key}`, () => this._sync());
-        this._sync();
+        this.sync();
         this.connect('activated', () => this._capture());
     }
 
-    _sync() {
-        this._label.accelerator = this._settings.get_strv(this._key)[0] ?? '';
+    sync() {
+        this._label.accelerator = this._read();
     }
 
     _capture() {
-        const dialog = new Adw.AlertDialog({
-            heading: _('Set Shortcut'),
-            body: _('Press the new key combination, Esc to cancel or Backspace to disable.'),
-        });
+        const body = _('Press the new key combination, Esc to cancel or Backspace to disable.');
+        const dialog = new Adw.AlertDialog({heading: _('Set Shortcut'), body});
         dialog.add_response('cancel', _('Cancel'));
 
         const controller = new Gtk.EventControllerKey({
@@ -462,7 +462,7 @@ class ShortcutRow extends Adw.ActionRow {
                 return Gdk.EVENT_STOP;
             }
             if (mask === 0 && keyval === Gdk.KEY_BackSpace) {
-                this._settings.set_strv(this._key, []);
+                this._write('');
                 dialog.close();
                 return Gdk.EVENT_STOP;
             }
@@ -470,12 +470,69 @@ class ShortcutRow extends Adw.ActionRow {
                 return Gdk.EVENT_STOP;
 
             const accel = Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask);
-            this._settings.set_strv(this._key, [accel]);
+            const error = this._check(accel);
+            if (error) {
+                dialog.body = `${error}\n\n${body}`;
+                return Gdk.EVENT_STOP;
+            }
+            this._write(accel);
             dialog.close();
             return Gdk.EVENT_STOP;
         });
         dialog.add_controller(controller);
         dialog.present(this.get_root());
+    }
+});
+
+/**
+ * One shortcut per action: it opens the menu with that action selected.
+ * Rows of actions that are not in the menu stay visible but greyed out.
+ */
+const ActionShortcutsGroup = GObject.registerClass(
+class ActionShortcutsGroup extends Adw.PreferencesGroup {
+    _init(settings) {
+        super._init({
+            title: _('Action shortcuts'),
+            description: _('Open the menu with an action already selected; press Enter to run it. While the menu is open, these shortcuts move the selection.'),
+        });
+        this._settings = settings;
+        this._rows = [];
+        for (const key of ['actions', 'custom-actions', 'action-shortcuts', 'toggle-menu'])
+            settings.connect(`changed::${key}`, () => this._rebuild());
+        this._rebuild();
+    }
+
+    _shortcuts() {
+        return this._settings.get_value('action-shortcuts').deepUnpack();
+    }
+
+    _set(id, accel) {
+        this._settings.set_value('action-shortcuts',
+            new GLib.Variant('a{ss}', assignShortcut(this._shortcuts(), id, accel)));
+    }
+
+    _rebuild() {
+        this._rows.forEach(row => this.remove(row));
+        const shown = this._settings.get_strv('actions');
+        const shortcuts = this._shortcuts();
+        this._rows = [...getActions(_, getCustomEntries(this._settings))].map(([id, action]) => {
+            const enabled = shown.includes(id);
+            const row = new ShortcutRow({
+                title: action.name,
+                subtitle: enabled ? null : _('Not shown in the menu'),
+                read: () => shortcuts[id] ?? '',
+                write: accel => this._set(id, accel),
+                reset: () => this._set(id, ''),
+                resetIcon: 'edit-clear-symbolic',
+                resetTooltip: _('Remove shortcut'),
+                check: accel => accel === this._settings.get_strv('toggle-menu')[0]
+                    ? _('This combination already opens the menu.') : null,
+            });
+            row.add_prefix(new Gtk.Image({icon_name: action.iconName}));
+            row.sensitive = enabled;
+            this.add(row);
+            return row;
+        });
     }
 });
 
@@ -649,7 +706,16 @@ export default class FastGnomeMenuPreferences extends ExtensionPreferences {
 
         const generalGroup = new Adw.PreferencesGroup({title: _('General')});
         behaviorPage.add(generalGroup);
-        generalGroup.add(new ShortcutRow(settings, 'toggle-menu'));
+        const toggleRow = new ShortcutRow({
+            title: _('Open menu'),
+            subtitle: _('Keyboard shortcut that shows the menu'),
+            read: () => settings.get_strv('toggle-menu')[0] ?? '',
+            write: accel => settings.set_strv('toggle-menu', accel ? [accel] : []),
+            reset: () => settings.reset('toggle-menu'),
+            resetTooltip: _('Reset to default'),
+        });
+        settings.connect('changed::toggle-menu', () => toggleRow.sync());
+        generalGroup.add(toggleRow);
         toggle(generalGroup, 'show-indicator', _('Show button in the top bar'));
         choice(generalGroup, 'monitor', _('Open on'), [
             ['pointer', _('Monitor with the pointer')],
@@ -660,6 +726,8 @@ export default class FastGnomeMenuPreferences extends ExtensionPreferences {
             ['last', _('Last action used')],
         ]);
         toggle(generalGroup, 'close-on-click-outside', _('Close when clicking outside'));
+
+        behaviorPage.add(new ActionShortcutsGroup(settings));
 
         const confirmGroup = new Adw.PreferencesGroup({
             title: _('Confirmation'),

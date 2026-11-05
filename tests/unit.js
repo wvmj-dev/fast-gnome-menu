@@ -1,6 +1,6 @@
 // Unit tests for the pure modules. Run with: gjs -m tests/unit.js
 // (or ./build.sh unit). No GNOME Shell needed.
-import {getActions, CUSTOM_ICON} from '../actions.js';
+import {assignShortcut, getActions, CUSTOM_ICON} from '../actions.js';
 import {contrastColor, parseColor} from '../color.js';
 import {getCells, pickNeighbour} from '../layout.js';
 
@@ -117,6 +117,17 @@ check('letters are unique', (() => {
     const keys = [...catalog.values()].map(a => a.key).filter(Boolean);
     return new Set(keys).size === keys.length;
 })());
+
+// --- assignShortcut ---------------------------------------------------------
+check('shortcut added', same(assignShortcut({}, 'power-off', '<Alt>p'), {'power-off': '<Alt>p'}));
+check('shortcut replaced', same(assignShortcut({'power-off': '<Alt>p'}, 'power-off', '<Alt>o'), {'power-off': '<Alt>o'}));
+check('shortcut removed', same(assignShortcut({'power-off': '<Alt>p', 'logout': '<Alt>e'}, 'power-off', ''), {'logout': '<Alt>e'}));
+check('shortcut taken from another action',
+    same(assignShortcut({'restart': '<Alt>p', 'logout': '<Alt>e'}, 'power-off', '<Alt>p'), {'logout': '<Alt>e', 'power-off': '<Alt>p'}));
+check('empty entries dropped', same(assignShortcut({'restart': ''}, 'logout', '<Alt>e'), {'logout': '<Alt>e'}));
+const original = {'restart': '<Alt>r'};
+assignShortcut(original, 'restart', '');
+check('input not changed', same(original, {'restart': '<Alt>r'}));
 
 print(failures ? `${failures} of ${count} checks failed` : `OK: ${count} checks passed`);
 if (failures)

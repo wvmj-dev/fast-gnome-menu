@@ -26,3 +26,24 @@ export function getActions(_, custom = []) {
     }
     return actions;
 }
+
+/**
+ * Gives `accel` to action `id` in a copy of the action-shortcuts map. Any
+ * other action holding the same accelerator loses it, so one key combination
+ * never selects two actions. An empty `accel` removes the shortcut of `id`.
+ *
+ * @param {Object<string, string>} shortcuts action id -> accelerator
+ * @param {string} id action to change
+ * @param {string} accel accelerator such as "<Alt>p", or ''
+ * @returns {Object<string, string>} the new map
+ */
+export function assignShortcut(shortcuts, id, accel) {
+    const result = {};
+    for (const [other, value] of Object.entries(shortcuts)) {
+        if (other !== id && value && value !== accel)
+            result[other] = value;
+    }
+    if (accel)
+        result[id] = accel;
+    return result;
+}

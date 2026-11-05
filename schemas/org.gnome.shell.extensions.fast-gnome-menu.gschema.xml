@@ -6,6 +6,11 @@
       <default><![CDATA[['<Super>x']]]></default>
       <summary>Keyboard shortcut that opens the menu</summary>
     </key>
+    <key name="action-shortcuts" type="a{ss}">
+      <default>{}</default>
+      <summary>Keyboard shortcuts that open the menu with an action selected</summary>
+      <description>Maps an action id to an accelerator such as "&lt;Alt&gt;p". Only actions shown in the menu get their shortcut.</description>
+    </key>
     <key name="actions" type="as">
       <default>['lock-screen', 'logout', 'restart', 'power-off']</default>
       <summary>Enabled actions, in display order</summary>
